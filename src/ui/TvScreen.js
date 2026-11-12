@@ -3,6 +3,7 @@ import React, { PureComponent as Component } from "react";
 import GameList from "./game/GameList";
 import CalendarView from "./tv/CalendarView";
 import StreamEmbed from "./tv/StreamEmbed";
+import SgfReplayView from "./tv/SgfReplayView";
 import { A, CheckboxInput, TabNav } from "./common";
 import {
   getLiveGames,
@@ -22,12 +23,14 @@ type Props = {
 type State = {
   activeTabId: string,
   danOnly: boolean,
+  replayUrl: ?string,
 };
 
 export default class TvScreen extends Component<Props, State> {
   state = {
     activeTabId: "live",
     danOnly: false,
+    replayUrl: null,
   };
 
   componentDidMount() {
@@ -36,7 +39,7 @@ export default class TvScreen extends Component<Props, State> {
 
   render() {
     let { activeGames, roomsById, actions, tvStreamUrl } = this.props;
-    let { activeTabId, danOnly } = this.state;
+    let { activeTabId, danOnly, replayUrl } = this.state;
 
     let sorted = sortGamesByStrength(getLiveGames(activeGames));
     let games = danOnly
@@ -72,7 +75,14 @@ export default class TvScreen extends Component<Props, State> {
       {
         id: "calendar",
         label: "Kalender",
-        content: <CalendarView />,
+        content: <CalendarView onOpenReplay={this._onOpenReplay} />,
+      },
+      {
+        id: "replay",
+        label: "Nachspielen",
+        content: (
+          <SgfReplayView key={replayUrl || "manual"} initialUrl={replayUrl} />
+        ),
       },
     ];
 
@@ -106,6 +116,10 @@ export default class TvScreen extends Component<Props, State> {
 
   _onSelectTab = (id: string) => {
     this.setState({ activeTabId: id });
+  };
+
+  _onOpenReplay = (url: string) => {
+    this.setState({ activeTabId: "replay", replayUrl: url });
   };
 
   _onDanOnlyChange = () => {

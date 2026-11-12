@@ -173,3 +173,90 @@
     color: $link-color;
   }
 }
+
+.CalendarEvent-replay {
+  margin-top: 8px;
+}
+
+.SgfReplay {
+  &-sources {
+    padding: 10px;
+    border-bottom: 1px solid $very-muted;
+  }
+
+  &-source {
+    margin-bottom: 10px;
+
+    &-label {
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+  }
+
+  &-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 60px;
+    margin-bottom: 6px;
+    font-family: monospace;
+    font-size: 12px;
+  }
+
+  &-error {
+    margin: 10px;
+    padding: 10px;
+    background: $error-bg;
+    color: $error-fg;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+
+  &-game {
+    padding: 10px 0;
+  }
+
+  &-info {
+    padding: 0 10px 6px;
+    color: $semi-muted;
+    font-size: 13px;
+  }
+
+  &-board-container {
+    position: relative;
+    height: 60vh;
+    max-height: 520px;
+    min-height: 280px;
+  }
+
+  &-nav {
+    position: relative;
+    height: 50px;
+  }
+
+  &-captures {
+    padding: 0 10px;
+    color: $semi-muted;
+    font-size: 13px;
+  }
+
+  &-comment {
+    margin: 10px;
+    padding: 8px 10px;
+    border: 1px solid $very-muted;
+    border-radius: 4px;
+    background: $off-white;
+
+    &-title {
+      font-weight: bold;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    &-text {
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
+  }
+}

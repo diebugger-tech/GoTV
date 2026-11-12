@@ -39,11 +39,17 @@ export default class BoardNav extends Component<Props> {
           <div className="BoardNav-move">Move {moveNum}</div>
         </div>
         <div className="BoardNav-step">
+          <A className="BoardNav-first" onClick={this._onFirst}>
+            <Icon name="angle-double-left" />
+          </A>
           <A className="BoardNav-prev" onClick={this._onPrev}>
             <Icon name="chevron-left" />
           </A>
           <A className="BoardNav-next" onClick={this._onNext}>
             <Icon name="chevron-right" />
+          </A>
+          <A className="BoardNav-last" onClick={this._onLast}>
+            <Icon name="angle-double-right" />
           </A>
         </div>
       </div>

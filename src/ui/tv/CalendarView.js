@@ -6,7 +6,9 @@ import { formatLocaleDate } from "../../util/date";
 import { validateTvEvent, groupEventsByTime } from "../../model/tv";
 import type { TvEvent } from "../../model/tv";
 
-type Props = {};
+type Props = {
+  onOpenReplay?: (string) => any,
+};
 
 type State = {
   status: "loading" | "ready" | "error",
@@ -33,9 +35,12 @@ function formatDateRange(event: TvEvent): string {
   return start;
 }
 
-class CalendarEventCard extends Component<{ event: TvEvent }> {
+class CalendarEventCard extends Component<{
+  event: TvEvent,
+  onOpenReplay?: (string) => any,
+}> {
   render() {
-    let { event } = this.props;
+    let { event, onOpenReplay } = this.props;
     return (
       <div className="CalendarEvent">
         <div className="CalendarEvent-header">
@@ -54,9 +59,26 @@ class CalendarEventCard extends Component<{ event: TvEvent }> {
           <div className="CalendarEvent-notes">{event.notes}</div>
         ) : null}
         <StreamEmbed event={event} />
+        {event.sgf_url && onOpenReplay ? (
+          <div className="CalendarEvent-replay">
+            <button
+              className="Button Button-secondary Button-small"
+              type="button"
+              onClick={this._onOpenReplay}>
+              SGF nachspielen
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   }
+
+  _onOpenReplay = () => {
+    let { event, onOpenReplay } = this.props;
+    if (event.sgf_url && onOpenReplay) {
+      onOpenReplay(event.sgf_url);
+    }
+  };
 }
 
 export default class CalendarView extends Component<Props, State> {
@@ -141,7 +163,11 @@ export default class CalendarView extends Component<Props, State> {
                 {GROUP_LABELS[(groupKey: any)]}
               </div>
               {group.map((event) => (
-                <CalendarEventCard key={event.id} event={event} />
+                <CalendarEventCard
+                  key={event.id}
+                  event={event}
+                  onOpenReplay={this.props.onOpenReplay}
+                />
               ))}
             </div>
           );

@@ -34,6 +34,18 @@
 - autolinker.js bleibt für die Link-Darstellung zuständig; der Button ist additiv
 - Unit-Tests für URL-Erkennung (5 Tests)
 
+### Phase 5 — Nachspielen (SGF-Replay)
+- `src/model/sgf.js`: SGF-Parser (Port aus Tiger's Mouth sgf.rs), erweitert um
+  Varianten, Handicap (HA/AB/AW), Markierungen (LB/TR/SQ/CR/MA), Kommentare,
+  Pässe; baut einen GameTree für die bestehende Brett-Komponente
+- Fixtures `src/model/__fixtures__/`: AlphaGo-LeeSedol 2016 Spiel 1 (19x19,
+  mit Variation), Yasuda-Ito 1840 (3-Steine-Vorgabe), Takao-So 2014 (13x13)
+- Replay-Tab "Nachspielen" im TV: Datei-Upload, SGF-Textfeld, sgf_url aus
+  events.json ("SGF nachspielen" im Kalender); vor/zurück/Anfang/Ende
+  (BoardNav erweitert), Slider, Pfeiltasten, Zugnummer, Gefangene, Kommentare
+- CORS-Fehler → klare Meldung, kein Proxy; Replay ohne Server-Interaktion
+- Unit-Tests für den Parser (13 Tests)
+
 ## v0.3.0
 - Challenge creation
 - Challenge negotation (by challenger only for now)
