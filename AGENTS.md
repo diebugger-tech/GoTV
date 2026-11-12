@@ -32,6 +32,9 @@ Kein Rust-Code, keine Rust-Abhängigkeiten.
   Iframe lädt erst nach Klick (Zwei-Klick-Lösung, vorher Platzhalter).
   Wenn Einbetten nicht möglich ist: Button "Extern öffnen" mit
   `target=_blank rel=noopener`.
+- Protokoll-Hygiene (Desktop-Proxy): Clients außerhalb des Browsers gehen über den
+  regulären Endpoint `/json/access`, nicht über eine ausgehebelte Browser-Prüfung.
+  Details: Abschnitt "Proxy-Begründung" unten.
 
 ## Setup (exakt, einmalig — Node 24 via Nix)
 
@@ -54,11 +57,12 @@ cd ~/Projekte/aktiv/shinkgs && yarn install
 | `yarn start` | Dev-Server (Port 3000) |
 | `PORT=3100 yarn start` | Port 3000 belegt → anderer Port |
 | `CI=true yarn start` | nicht-interaktiver Kontext ohne TTY (sonst beendet sich start.js beim stdin-Ende) |
-| `yarn build` | Production-Build → `build/` |
+| `yarn build` | Production-Build (Web) → `build/` |
 | `yarn lint` | eslint src/ |
 | `yarn flow` | flow check |
 | `yarn test` | react-scripts test --env=jsdom |
 | `http://localhost:3100/#tv-dev` | Dev-Harness: kompletter TV-Flow ohne KGS-Login (nur Development) |
+| `desktop/install.sh` | Desktop-App bauen + installieren (siehe Desktop-Abschnitt) |
 
 Gate nach jedem Schritt: `yarn lint && yarn flow && yarn build`
 
@@ -71,6 +75,82 @@ Gate nach jedem Schritt: `yarn lint && yarn flow && yarn build`
   (Slash-Division, mixed declarations, z.B. `_board.scss:73-74`) — unschädlich, bewusst
   nicht angefasst (minimal-invasiv).
 - Kein React-/react-scripts-Upgrade in Phase 0.
+- `BUILD_PATH` wird von react-scripts 3.4.1 ignoriert: die Desktop-Variante baut mit
+  eigener `REACT_APP_API_URL` und verschiebt danach `build/` → `build-desktop/`
+  (siehe `desktop/install.sh`). Ein späterer einfacher `yarn build` erzeugt `build/`
+  neu mit der Standard-Env und lässt `build-desktop/` unberührt — beide Konfigurationen
+  nicht verwechseln.
+
+## Desktop-App (GNOME, lokal)
+
+Lokale Installation als Desktop-App (eigenes Fenster, kein Browser-Chrome, kein
+sudo, kein Electron). Dateien unter `desktop/`:
+
+- **`goTV_local.py`** — Python-Stdlib-`ThreadingHTTPServer`, bindet NUR an
+  `127.0.0.1:8788` (Port per `GOTV_PORT`/`--port`). Liefert `build-desktop/` aus
+  (SPA-Fallback auf `index.html` für History-Routen wie `/tv`, `/watch`;
+  Pfad-Traversal durch `normpath` + `startswith`-Check auf das Build-Verzeichnis
+  blockiert). `/igs-bridge` ist reserviert für eine künftige IGS-Quelle und
+  antwortet bewusst 501, bis die IGS-Nutzungsbedingungen geprüft sind (siehe
+  TV-Quellen-Grundsatz unten).
+- **`launch-gotv`** — Health-Check (curl gegen den Server, bounded loop), startet
+  den Server, erkennt einen Chromium-Browser (nativ → Flatpak → Snap, feste
+  Reihenfolge chromium/chrome/brave/edge) und öffnet ihn mit
+  `--app=http://127.0.0.1:8788 --user-data-dir=~/.local/share/gotv/profile
+  --class=gotv` (eigenes Profil, kein Browser-Chrome).
+- **`gotv.desktop`** — Desktop-Eintrag, `StartupWMClass=gotv` (passend zu
+  `--class`). `Name`/`Icon` sind aktuell Platzhalter "Go TV" — siehe "Offene
+  Entscheidungen" unten, Name/Icon sind noch nicht final.
+- **`install.sh` / `uninstall.sh`** — user-scoped (kein sudo): baut
+  `build-desktop/`, installiert Launcher nach `~/.local/bin`, `.desktop` nach
+  `~/.local/share/applications`, Icon nach
+  `~/.local/share/icons/hicolor/512x512/apps`; aktualisiert Desktop-DB/Icon-Cache,
+  falls vorhanden. `uninstall.sh` stoppt den Server (`pkill -f` auf das
+  Server-Skript) und lässt Nutzerdaten (Browser-Profil, Logs) bewusst stehen.
+
+### Proxy-Begründung (Commits 05c4082, 98655e7, 38cab76)
+
+**Ursprünglich** (05c4082) lief der lokale Proxy gegen den Browser-Endpoint
+`/json-cors/access` und entfernte den Origin-Header, um KGS' Origin-Whitelist zu
+umgehen. Funktionierte, war aber der falsche Weg: `/json-cors/access` ist für
+Browser-Clients mit Origin-Prüfung gedacht, nicht für Nicht-Browser-Clients wie
+diesen lokalen Proxy.
+
+**Korrektur (98655e7):** Ziel ist jetzt der reguläre Endpoint `/json/access` für
+Clients außerhalb des Browsers — denselben, den auch Tiger's Mouth nutzt
+(`REACT_APP_API_URL=/json/access`). Gemessen (curl, siehe Kopfkommentar in
+`goTV_local.py`):
+
+| Request | Ergebnis |
+|---|---|
+| POST, `Origin: https://shin.gokgs.com` | 200 |
+| POST, `Origin: http://127.0.0.1:8788` | 403 |
+| POST, kein Origin-Header | 200 + Cookie |
+
+Ergebnis: **auch** `/json/access` prüft die Origin-Whitelist, sobald ein
+Origin-Header gesetzt ist. Den Origin-Header wie ursprünglich angefragt einfach
+durchzureichen würde den Login wieder auf 403 brechen. Der Proxy entfernt den
+Origin-Header deshalb weiterhin — das ist jetzt aber eine gemessene Notwendigkeit
+des richtigen (Nicht-Browser-)Endpoints, nicht mehr das Umgehen einer
+Browser-Prüfung über den falschen (Browser-)Endpoint. Cookies (`JSESSIONID`,
+`Path=/json` passt zur lokalen Route `/json/access`) und Long-Polling
+(GET ohne Read-Timeout) laufen unverändert durch.
+
+**Absicherung (38cab76), DNS-Rebinding-Guard** — vor jeder Anfrage
+(`_request_allowed`):
+- `Host`-Header muss exakt `127.0.0.1:8788` oder `localhost:8788` sein, sonst
+  403 "Forbidden host".
+- Ist ein `Origin`-Header gesetzt, muss er exakt `http://127.0.0.1:8788` bzw.
+  `http://localhost:8788` sein; ein fehlender Origin-Header ist erlaubt
+  (server-seitige Requests ohne Origin). Sonst 403 "Forbidden origin".
+
+Mit curl getestet: fremder Host → 403, fremder Origin → 403, lokale
+Host/Origin-Kombinationen (inkl. ohne Origin) → normal verarbeitet.
+QA-Screenshots/Belege: `~/.hermes/cache/scratch/go-tv-qa/`.
+
+Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
+`main()` bei fehlendem Build verweist noch auf den alten Pfad
+`.../json-cors/access` statt `/json/access` (Zeile ~294 in `goTV_local.py`).
 
 ## Architektur — Go-TV-Modul
 
@@ -90,18 +170,59 @@ Gate nach jedem Schritt: `yarn lint && yarn flow && yarn build`
   `GENERATE_SOURCEMAP=false` im build-Script (sonst stünde der Quelltext in den .map-Dateien).
   `public/tv/demo.sgf` ist die Demo-Fixture für den Harness und `sgf_url`.
 
+## TV-Quellen-Grundsatz (Live / Watch / TV-Kalender)
+
+Policy, von dir als "Stufe 1" bezeichnet:
+
+- **Watch** (bestehend, unverändert) bleibt für ALLE laufenden KGS-Partien reserviert
+  — wie vor diesem Fork.
+- **TV → Live** ist NICHT "irgendeine starke Partie", sondern ausschließlich für
+  Übertragungen:
+  (a) KGS-Partien mit `game.event === true` (offiziell übertragene Turnierpartien),
+  (b) Kalender-Events (Phase 3), die gerade live sind.
+  Alle anderen aktiven KGS-Partien gehören nur in "Watch".
+- **TvSource-Interface:** `KgsTvSource` ist die einzige implementierte Quelle. Ein
+  zweiter Quellentyp ist im Interface vorgesehen; `IgsTvSource` (Pandanet/IGS) ist
+  absichtlich BLOCKIERT — `/igs-bridge` in `goTV_local.py` antwortet 501, bis die
+  IGS-Nutzungsbedingungen geprüft sind (Kontakt laut Pandanet-FAQ:
+  `developer@pandanet-igs.com`).
+
+### Umsetzungsstand
+- [x] Schritt 1: `event`-Flag ist im KGS-Protokoll vorhanden und wird bereits
+      eingelesen (verifiziert, nicht neu gebaut).
+- [ ] Schritt 2: Live-Filter tatsächlich auf `game.event === true` + Kalender-Live
+      anwenden. **Noch nicht gebaut** — TV → Live zeigt aktuell weiterhin ALLE
+      aktiven Partien, Rang-sortiert; der "Dan only"-Filter steckt noch im Code
+      und soll mit diesem Schritt entfernt werden.
+- [ ] Schritt 3: Leerzustand "Gerade keine Übertragung" + nächstes Kalender-Event
+      + Link auf die KGS-Event-Seite, wenn nichts live ist.
+- [ ] Schritt 4: Stream neben dem Brett via `kgs_room`/`kgs_players`.
+- [ ] Schritt 5: "Nachspielen"-Vorschlag nach Partieende.
+- [ ] `TvSource`-Interface mit `KgsTvSource` als eigene Abstraktion herauslösen
+      (aktuell liest die UI direkt auf KgsClient-Daten).
+
 ## Roadmap
 
 - [x] Phase 0 — Lauffähig: yarn via corepack, dart-sass, NODE_OPTIONS; Login-Screen + Build grün
 - [x] Phase 1 — Bestandsaufnahme (Abschnitt "Bestand")
-- [x] Phase 2 — Go TV: Live-Top-Partien
+- [x] Phase 2 — Go TV: Live-Top-Partien (Rang-Sortierung/"Dan only") — wird durch
+      den TV-Quellen-Grundsatz oben teilweise ersetzt (Schritt 2 offen)
 - [x] Phase 3 — Turnierkalender
 - [x] Phase 4 — Stream-Links im Chat
 - [x] Phase 5 — Nachspielen (SGF-Replay) (Commit be3f25d)
-- [ ] Phase 6 — offene Roadmap, Reihenfolge:
-      (a) events.json von GitHub laden,
-      (b) YouTube Data API (Key/Quota/Datenschutz vorher klären),
-      (c) KataGo nur Replay/Beobachter (braucht Backend-Dienst)
+- [x] Phase 6 — nur Dokumentation (siehe "Offene Roadmap" unten)
+- [x] Desktop-Paket (GNOME): lokaler Server, Proxy-Korrektur, DNS-Rebinding-Guard,
+      Launcher/Icon/.desktop, install.sh/uninstall.sh
+      (Commits 05c4082, 9f9dc18, 86a901e, 41fed13, 1959ce5, 98655e7, 38cab76)
+- [ ] TV-Quellen-Grundsatz, Schritte 2-5 (siehe Abschnitt oben) — NICHT gebaut
+- [ ] events.json Schema v2: `channel`-Feld (YouTube Channel-ID / Twitch-Login),
+      Live-Kanal-Embeds (`embed/live_stream?channel=…`,
+      `player.twitch.tv/?channel=…`), Archiv nach 14 Tagen, die 4 alten
+      Platzhalter-Events entfernen, Remote-Fetch von GitHub mit 1h-Cache
+      (lokale Datei bleibt Offline-Fallback) — angekündigt, NICHT gebaut
+      (Stand events.json, Commit a0b9bcc: noch altes Schema + 4 Platzhalter
+      + 1 Beispiel-Event)
+- [ ] App-Name + Icon: Name noch offen, bestimmt Icon-Design und Desktop-Branding
 
 ## Bestand (Phase 1)
 
@@ -166,6 +287,9 @@ Gate nach jedem Schritt: `yarn lint && yarn flow && yarn build`
   App lädt `raw.githubusercontent.com/<org>/<repo>/main/tv/events.json`
   (CORS-fähig). Vorab klären: Repo-Besitzer, Review-Prozess, Fallback
   auf das lokale `public/tv/events.json`, wenn der Fetch fehlschlägt.
+  Ergänzung: ein erster, konkreter Umsetzungsvorschlag liegt bereits vor
+  (events.json Schema v2, siehe Roadmap oben) — Repo-Besitzer/Review-Prozess
+  sind noch offen.
 - [ ] **(b) YouTube Data API — automatische Erkennung von Live-Übertragungen:**
   Live-Streams bekannter Go-Kanäle automatisch im Kalender anzeigen.
   Vorab klären: API-Key (wer betreibt ihn? Server-seitig nötig, Key gehört
@@ -175,3 +299,18 @@ Gate nach jedem Schritt: `yarn lint && yarn flow && yarn build`
   eigener laufender Partie. Braucht einen Backend-Dienst (Engine läuft
   nicht im Client). Vorab klären: lokal (WASM) vs. Server,
   Engine-Lebenszyklus, UI für die Analyse-Anzeige.
+
+## Offene Entscheidungen (Produkt, Stand heute)
+
+- **App-Name:** noch nicht entschieden. "Go TV" war nur ein Arbeitstitel. Der Name
+  bestimmt Icon-Design, `gotv.desktop`-Beschriftung und (falls gewünscht) den Namen
+  dieses Claude-Projekts.
+- **Icon:** wird entworfen (3 Varianten zur Auswahl), sobald der Name feststeht.
+- **Wöchentlicher Event-Scanner:** Idee, die Quellen EGF-Twitch-Zeitplan, KGS-Events
+  und Profi-Turnierseiten wöchentlich automatisch zu prüfen und einen PR mit neuen
+  Events auf den Fork zu öffnen. Braucht Schreibzugriff (PR-Rechte) auf den Fork —
+  noch nicht eingerichtet, noch keine Entscheidung.
+- **Belegte, aber nicht als gestreamt bestätigte Turniere (Winter):** Hungarian Open
+  Budapest (21.–22.11.), Berliner Kranich (28.–29.11.), Velika Gorica (12.–13.12.),
+  Grand Prix Żołędowo (5.–6.12.). Keine Video-ID/Stream-URL eingetragen, solange eine
+  Übertragung nicht bestätigt ist (kein Eintrag aus dem Gedächtnis).
