@@ -23,7 +23,7 @@ import {
   getGameRoleColor,
 } from "../../model/game";
 import { sortUsers } from "../../model/user";
-import { getLiveEventForGame } from "../../model/tv";
+import { kgsTvSource } from "../../model/TvSource";
 import type {
   GameChannel,
   GameChatSection,
@@ -153,7 +153,12 @@ export default class GameScreen extends Component<Props, State> {
     let isRengo = !!game.players.white_2;
     let liveEvent =
       !playing && game.event
-        ? getLiveEventForGame(game, tvEvents || [], roomsById, new Date())
+        ? kgsTvSource.getLiveEventForGame(
+            game,
+            tvEvents || [],
+            roomsById,
+            new Date()
+          )
         : null;
     let className =
       "GameScreen GameScreen-" +

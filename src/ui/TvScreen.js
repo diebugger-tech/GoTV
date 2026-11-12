@@ -9,12 +9,11 @@ import StreamEmbed from "./tv/StreamEmbed";
 import SgfReplayView from "./tv/SgfReplayView";
 import { A, TabNav } from "./common";
 import {
-  getLiveEventGames,
-  getLiveEvents,
   getNextUpcomingEvent,
   fetchTvEvents,
   KGS_EVENTS_PAGE_URL,
 } from "../model/tv";
+import { kgsTvSource } from "../model/TvSource";
 import type { TvEvent } from "../model/tv";
 import type { GameChannel, Room, Index, AppActions } from "../model";
 
@@ -79,8 +78,8 @@ export default class TvScreen extends Component<Props, State> {
     let { activeTabId, replayUrl, tvEvents } = this.state;
 
     let now = new Date();
-    let liveEventGames = getLiveEventGames(activeGames);
-    let liveEvents = getLiveEvents(tvEvents, now);
+    let liveEventGames = kgsTvSource.getLiveGames(activeGames);
+    let liveEvents = kgsTvSource.getLiveEvents(tvEvents, now);
     let hasLive = liveEventGames.length > 0 || liveEvents.length > 0;
     let nextEvent = getNextUpcomingEvent(tvEvents, now);
     let replayGame = tvReplayGameId ? gamesById[tvReplayGameId] : null;
