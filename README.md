@@ -52,8 +52,10 @@ Discord chat group for anyone interested in helping: https://discord.gg/vwzxdVr
 
 ## Desktop-Installation (Linux, GNOME)
 
-The "Go TV" fork can be installed as a local desktop app: an icon in the app
-grid opens the login screen in its own window (no browser chrome).
+**Currently Linux only** (tested on Ubuntu/GNOME) - Windows and macOS
+packaging is planned but not built yet. The "Go TV" fork can be installed
+as a local desktop app: a Go-board-themed icon in the app grid opens the
+login screen in its own window (no browser chrome).
 
 Prerequisites:
 
@@ -61,6 +63,9 @@ Prerequisites:
 - Python 3 (standard library only), `curl`
 - A Chromium-family browser (chromium, google-chrome, brave or
   microsoft-edge; native, Flatpak or Snap are all detected automatically)
+- `inkscape` or ImageMagick (`convert`/`magick`), only if you need to
+  regenerate `desktop/icons/png/` from `desktop/icons/gotv.svg` - the
+  rendered PNGs are committed, so a plain install doesn't need either
 
 Install (no sudo, user-scoped only):
 
@@ -81,6 +86,16 @@ sh desktop/uninstall.sh
 
 Browser profile and server log live in `~/.local/share/gotv/` and are left
 in place by the uninstaller.
+
+### Fehlerbehebung
+
+- **Icon fehlt in der App-Auswahl:** `sh desktop/install.sh` erneut
+  ausführen, dann `gtk-update-icon-cache -f -t ~/.local/share/icons/hicolor`
+  (macht `install.sh` bereits selbst, falls vorhanden) - hilft das nicht,
+  einmal ab- und wieder anmelden (manche Desktop-Umgebungen aktualisieren
+  die Icon-Auswahl sonst nicht sofort).
+- **Desktop-App zeigt einen alten Stand:** `sh desktop/install.sh` erneut
+  ausführen - baut `build-desktop/` neu und aktualisiert Icon/Launcher.
 
 ## Events eintragen
 
