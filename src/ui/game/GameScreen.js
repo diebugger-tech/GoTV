@@ -6,6 +6,7 @@ import GameChat from "./GameChat";
 import GameMoreMenu from "./GameMoreMenu";
 import GamePlayActions from "./GamePlayActions";
 import GameUndoPrompt from "./GameUndoPrompt";
+import GameReplaySuggestion from "./GameReplaySuggestion";
 import BoardContainer from "../board/BoardContainer";
 import BoardNav from "../board/BoardNav";
 import UserList from "../user/UserList";
@@ -49,6 +50,7 @@ type Props = {
 type State = {
   tab: "chat" | "info" | "users",
   chatSections: Array<GameChatSection>,
+  dismissedReplaySuggestionForGameId: ?number,
 };
 
 /**
@@ -90,6 +92,7 @@ export default class GameScreen extends Component<Props, State> {
   state = {
     tab: "chat",
     chatSections: [],
+    dismissedReplaySuggestionForGameId: null,
   };
 
   _chatScrollRef: ?HTMLElement;
@@ -133,7 +136,7 @@ export default class GameScreen extends Component<Props, State> {
       tvEvents,
       actions,
     } = this.props;
-    let { tab, chatSections } = this.state;
+    let { tab, chatSections, dismissedReplaySuggestionForGameId } = this.state;
     let users = game.users ? game.users.map((name) => usersByName[name]) : [];
     sortUsers(users);
     let tree = game.tree;
@@ -332,6 +335,17 @@ export default class GameScreen extends Component<Props, State> {
             />
           </div>
         ) : null}
+        {!playing &&
+        game.over &&
+        game.tree &&
+        dismissedReplaySuggestionForGameId !== game.id ? (
+          <div className="GameScreen-replay-suggestion">
+            <GameReplaySuggestion
+              onReplay={this._onSuggestedReplay}
+              onDismiss={this._onDismissReplaySuggestion}
+            />
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -400,5 +414,15 @@ export default class GameScreen extends Component<Props, State> {
     if (game.undoRequest) {
       this.props.actions.onDeclineUndo(game);
     }
+  };
+
+  _onSuggestedReplay = () => {
+    this.props.actions.onSuggestGameReplay(this.props.game);
+  };
+
+  _onDismissReplaySuggestion = () => {
+    this.setState({
+      dismissedReplaySuggestionForGameId: this.props.game.id,
+    });
   };
 }

@@ -531,6 +531,19 @@ a.BoardNav-next {
     z-index: 4;
   }
 
+  .GameScreen-replay-suggestion {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    right: 350px;
+    z-index: 4;
+  }
+
+  .GameScreen-has-tv-stream .GameScreen-replay-suggestion {
+    top: 220px;
+  }
+
   .GameScreen-rengo {
     .GameScreen-players-users {
       height: 210px;
@@ -808,6 +821,33 @@ a.BoardNav-next {
 }
 
 .GameUndoPrompt-buttons {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.GameReplaySuggestion {
+  position: absolute;
+  left: 50%;
+  top: 10px;
+  padding: 5px;
+  background: $content-bg;
+  font-size: 14px;
+  border-radius: 4px;
+  z-index: 1;
+  width: 290px;
+  margin-left: -145px;
+  text-align: center;
+  box-shadow: 0 5px 20px rgba($shadow-bg, 0.3);
+  box-sizing: border-box;
+}
+
+.GameReplaySuggestion-label {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+
+.GameReplaySuggestion-buttons {
   display: inline-block;
   vertical-align: middle;
 }
@@ -1094,6 +1134,14 @@ a.BoardNav-next {
   }
 
   .GameScreen-undo-prompt {
+    position: absolute;
+    left: 0;
+    top: 50px;
+    right: 0;
+    z-index: 4;
+  }
+
+  .GameScreen-replay-suggestion {
     position: absolute;
     left: 0;
     top: 50px;

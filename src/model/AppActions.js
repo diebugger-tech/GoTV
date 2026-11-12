@@ -768,6 +768,11 @@ export class AppActions {
     this._store.dispatch({ type: "TV_CLOSE_STREAM" });
   };
 
+  onSuggestGameReplay = (game: GameChannel) => {
+    this._store.dispatch({ type: "TV_REPLAY_GAME", gameId: game.id });
+    this.onChangeNav("tv");
+  };
+
   onClickContribute = () => {
     window.open("https://github.com/jkk/shinkgs", "_blank");
   };

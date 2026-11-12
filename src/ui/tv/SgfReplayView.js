@@ -14,6 +14,7 @@ import type { GameTree } from "../../model";
 
 type Props = {
   initialUrl?: ?string,
+  initialTree?: ?GameTree,
 };
 
 type State = {
@@ -40,19 +41,38 @@ export default class SgfReplayView extends Component<Props, State> {
   _fileInput: ?HTMLInputElement;
 
   componentDidMount() {
-    if (this.props.initialUrl) {
+    if (this.props.initialTree) {
+      this._applyTree(this.props.initialTree);
+    } else if (this.props.initialUrl) {
       this._loadUrl(this.props.initialUrl);
     }
   }
 
   componentDidUpdate(prevProps: Props) {
     if (
+      this.props.initialTree &&
+      this.props.initialTree !== prevProps.initialTree
+    ) {
+      this._applyTree(this.props.initialTree);
+    } else if (
       this.props.initialUrl &&
       this.props.initialUrl !== prevProps.initialUrl
     ) {
       this._loadUrl(this.props.initialUrl);
     }
   }
+
+  // A tree that's already in memory (e.g. a game just watched to the end) -
+  // no fetch, no SGF (re-)parsing. Always starts the replay at the root,
+  // regardless of where the live view's currentNode happened to be.
+  _applyTree = (tree: GameTree) => {
+    this.setState({
+      status: "ready",
+      error: null,
+      tree,
+      currentNode: tree.rootNode,
+    });
+  };
 
   _loadUrl = (url: string) => {
     this.setState({ status: "empty", error: null });

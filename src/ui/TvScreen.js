@@ -20,9 +20,11 @@ import type { GameChannel, Room, Index, AppActions } from "../model";
 
 type Props = {
   activeGames: Array<GameChannel>,
+  gamesById: Index<GameChannel>,
   roomsById: Index<Room>,
   actions: AppActions,
   tvStreamUrl: ?string,
+  tvReplayGameId: ?number,
 };
 
 type State = {
@@ -34,7 +36,7 @@ type State = {
 
 export default class TvScreen extends Component<Props, State> {
   state = {
-    activeTabId: "live",
+    activeTabId: this.props.tvReplayGameId ? "replay" : "live",
     replayUrl: null,
     tvEventsStatus: "loading",
     tvEvents: [],
@@ -43,6 +45,15 @@ export default class TvScreen extends Component<Props, State> {
   componentDidMount() {
     window.scrollTo(0, 0);
     this._loadEvents();
+  }
+
+  componentDidUpdate(prevProps: Props) {
+    if (
+      this.props.tvReplayGameId &&
+      this.props.tvReplayGameId !== prevProps.tvReplayGameId
+    ) {
+      this.setState({ activeTabId: "replay" });
+    }
   }
 
   _loadEvents = () => {
@@ -57,7 +68,14 @@ export default class TvScreen extends Component<Props, State> {
   };
 
   render() {
-    let { activeGames, roomsById, actions, tvStreamUrl } = this.props;
+    let {
+      activeGames,
+      gamesById,
+      roomsById,
+      actions,
+      tvStreamUrl,
+      tvReplayGameId,
+    } = this.props;
     let { activeTabId, replayUrl, tvEvents } = this.state;
 
     let now = new Date();
@@ -65,6 +83,8 @@ export default class TvScreen extends Component<Props, State> {
     let liveEvents = getLiveEvents(tvEvents, now);
     let hasLive = liveEventGames.length > 0 || liveEvents.length > 0;
     let nextEvent = getNextUpcomingEvent(tvEvents, now);
+    let replayGame = tvReplayGameId ? gamesById[tvReplayGameId] : null;
+    let replayTree = replayGame ? replayGame.tree : null;
 
     let tabs = [
       {
@@ -137,7 +157,15 @@ export default class TvScreen extends Component<Props, State> {
         id: "replay",
         label: "Nachspielen",
         content: (
-          <SgfReplayView key={replayUrl || "manual"} initialUrl={replayUrl} />
+          <SgfReplayView
+            key={
+              replayTree
+                ? "game-" + String(tvReplayGameId)
+                : replayUrl || "manual"
+            }
+            initialUrl={replayTree ? null : replayUrl}
+            initialTree={replayTree}
+          />
         ),
       },
     ];

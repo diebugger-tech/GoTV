@@ -138,6 +138,11 @@ export function handleSessionMessage(
         ...prevState,
         tvStreamUrl: null,
       };
+    case "TV_REPLAY_GAME":
+      return {
+        ...prevState,
+        tvReplayGameId: msg.gameId,
+      };
     case "UPDATE_PREFERENCES":
       return {
         ...prevState,

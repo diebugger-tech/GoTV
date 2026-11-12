@@ -463,6 +463,7 @@ export type AppState = {
   +showFeedbackModal: boolean,
   +reviewGameId: ?number,
   +tvStreamUrl: ?string,
+  +tvReplayGameId: ?number,
 };
 
 export type KgsMessage =
