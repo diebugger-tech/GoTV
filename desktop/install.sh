@@ -37,15 +37,23 @@ mv build build-desktop
 echo "2/4 Launcher, Icon und Desktop-Datei..."
 mkdir -p "$HOME_DIR/.local/bin" \
          "$HOME_DIR/.local/share/applications" \
-         "$HOME_DIR/.local/share/icons/hicolor/512x512/apps" \
+         "$HOME_DIR/.local/share/icons/hicolor/scalable/apps" \
          "$HOME_DIR/.config/gotv" \
          "$HOME_DIR/.local/share/gotv"
 
 cp "$ROOT_DIR/desktop/launch-gotv" "$HOME_DIR/.local/bin/launch-gotv"
 chmod +x "$HOME_DIR/.local/bin/launch-gotv"
 
-cp "$ROOT_DIR/public/icon-512x512.png" \
-   "$HOME_DIR/.local/share/icons/hicolor/512x512/apps/gotv.png"
+cp "$ROOT_DIR/desktop/icons/gotv.svg" \
+   "$HOME_DIR/.local/share/icons/hicolor/scalable/apps/gotv.svg"
+for size in 16 32 48 64 128 256 512; do
+  mkdir -p "$HOME_DIR/.local/share/icons/hicolor/${size}x${size}/apps"
+  cp "$ROOT_DIR/desktop/icons/png/gotv-${size}.png" \
+     "$HOME_DIR/.local/share/icons/hicolor/${size}x${size}/apps/gotv.png"
+done
+# Alter, flacher Icon-Pfad aus einer frueheren Variante - falls noch vorhanden,
+# entfernen, damit nur noch die hicolor-Version gefunden wird.
+rm -f "$HOME_DIR/.local/share/icons/gotv.png"
 
 echo "$ROOT_DIR" > "$HOME_DIR/.config/gotv/root-path"
 
@@ -59,7 +67,7 @@ if command -v update-desktop-database > /dev/null 2>&1; then
   update-desktop-database "$HOME_DIR/.local/share/applications" 2> /dev/null
 fi
 if command -v gtk-update-icon-cache > /dev/null 2>&1; then
-  gtk-update-icon-cache "$HOME_DIR/.local/share/icons/hicolor" 2> /dev/null
+  gtk-update-icon-cache -f -t "$HOME_DIR/.local/share/icons/hicolor" 2> /dev/null
 fi
 
 echo "4/4 Fertig."

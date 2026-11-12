@@ -18,7 +18,15 @@ fi
 
 for file in \
   "$HOME_DIR/.local/share/applications/gotv.desktop" \
+  "$HOME_DIR/.local/share/icons/hicolor/scalable/apps/gotv.svg" \
+  "$HOME_DIR/.local/share/icons/hicolor/16x16/apps/gotv.png" \
+  "$HOME_DIR/.local/share/icons/hicolor/32x32/apps/gotv.png" \
+  "$HOME_DIR/.local/share/icons/hicolor/48x48/apps/gotv.png" \
+  "$HOME_DIR/.local/share/icons/hicolor/64x64/apps/gotv.png" \
+  "$HOME_DIR/.local/share/icons/hicolor/128x128/apps/gotv.png" \
+  "$HOME_DIR/.local/share/icons/hicolor/256x256/apps/gotv.png" \
   "$HOME_DIR/.local/share/icons/hicolor/512x512/apps/gotv.png" \
+  "$HOME_DIR/.local/share/icons/gotv.png" \
   "$HOME_DIR/.local/bin/launch-gotv" \
   "$HOME_DIR/.config/gotv/root-path"; do
   if [ -e "$file" ]; then
@@ -36,7 +44,7 @@ if command -v update-desktop-database > /dev/null 2>&1; then
   update-desktop-database "$HOME_DIR/.local/share/applications" 2> /dev/null
 fi
 if command -v gtk-update-icon-cache > /dev/null 2>&1; then
-  gtk-update-icon-cache "$HOME_DIR/.local/share/icons/hicolor" 2> /dev/null
+  gtk-update-icon-cache -f -t "$HOME_DIR/.local/share/icons/hicolor" 2> /dev/null
 fi
 
 echo "Fertig."
