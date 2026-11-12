@@ -5,6 +5,7 @@ import OfflineAlert from "./meta/OfflineAlert";
 import UnderConstructionModal from "./meta/UnderConstructionModal";
 import FeedbackModal from "./meta/FeedbackModal";
 import WatchScreen from "./WatchScreen";
+import TvScreen from "./TvScreen";
 import PlayScreen from "./PlayScreen";
 import SearchScreen from "./SearchScreen";
 import ChatScreen from "./chat/ChatScreen";
@@ -38,6 +39,8 @@ export default class Main extends Component<Props> {
     let content;
     if (nav === "watch") {
       content = <WatchScreen {...screenProps} />;
+    } else if (nav === "tv") {
+      content = <TvScreen {...screenProps} />;
     } else if (nav === "play") {
       content = <PlayScreen {...screenProps} />;
     } else if (nav === "chat") {

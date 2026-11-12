@@ -44,6 +44,7 @@ export function handleMessage(prevState: AppState, msg: KgsMessage): AppState {
 export function isValidNav(nav: string) {
   return (
     nav === "watch" ||
+    nav === "tv" ||
     nav === "play" ||
     nav === "chat" ||
     nav === "search" ||

@@ -403,7 +403,7 @@ export type Index<T> = {
   [key: string | number]: T,
 };
 
-export type NavOption = "watch" | "play" | "chat" | "search" | "more";
+export type NavOption = "watch" | "tv" | "play" | "chat" | "search" | "more";
 
 export type UserDetailsRequest = {
   name: string,

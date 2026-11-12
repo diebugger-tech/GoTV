@@ -7,6 +7,13 @@
 - node-sass 4.14.1 → `sass` (dart-sass) 1.77.8; SCSS kompiliert unverändert
 - `NODE_OPTIONS=--openssl-legacy-provider` in start/build-Scripts (webpack 4, md4 auf OpenSSL 3)
 
+### Phase 2 — Go TV: Live-Top-Partien
+- Neuer Navigationspunkt "TV" (NavOption, isValidNav, MainNav-Tab, Main-Branch)
+- `src/model/tv.js`: Live-Filter + Sortierung nach Rang des schwächeren Spielers
+  (dan vor kyu, Pro vor dan, unranked ans Ende)
+- `src/ui/TvScreen.js`: Live-Liste (GameList) mit Filter "Dan only";
+  Klick öffnet die bestehende Beobachten-Ansicht (actions.onJoinGame)
+
 ## v0.3.0
 - Challenge creation
 - Challenge negotation (by challenger only for now)

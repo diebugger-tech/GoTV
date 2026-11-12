@@ -86,6 +86,17 @@ export default class Nav extends Component<Props, State> {
             </div>
             <div
               className={
+                "MainNav-item" + (nav === "tv" ? " MainNav-item-selected" : "")
+              }>
+              <A onClick={this._onNavTv}>
+                <div className="MainNav-item-icon">
+                  <Icon name="television" />
+                </div>
+                <div className="MainNav-item-label">TV</div>
+              </A>
+            </div>
+            <div
+              className={
                 "MainNav-item" +
                 (nav === "play" ? " MainNav-item-selected" : "")
               }>
@@ -204,6 +215,7 @@ export default class Nav extends Component<Props, State> {
   }
 
   _onNavWatch = () => this.props.actions.onChangeNav("watch");
+  _onNavTv = () => this.props.actions.onChangeNav("tv");
   _onNavPlay = () => this.props.actions.onChangeNav("play");
   _onNavChat = () => this.props.actions.onChangeNav("chat");
   _onNavSearch = () => this.props.actions.onChangeNav("search");
