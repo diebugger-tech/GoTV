@@ -10,6 +10,7 @@ import BoardContainer from "../board/BoardContainer";
 import BoardNav from "../board/BoardNav";
 import UserList from "../user/UserList";
 import ChatMessageBar from "../chat/ChatMessageBar";
+import StreamEmbed from "../tv/StreamEmbed";
 import { A, Icon } from "../common";
 import {
   formatGameScore,
@@ -21,6 +22,7 @@ import {
   getGameRoleColor,
 } from "../../model/game";
 import { sortUsers } from "../../model/user";
+import { getLiveEventForGame } from "../../model/tv";
 import type {
   GameChannel,
   GameChatSection,
@@ -32,12 +34,14 @@ import type {
   BoardPointMark,
   PlayerColor,
 } from "../../model";
+import type { TvEvent } from "../../model/tv";
 
 type Props = {
   playing?: boolean,
   game: GameChannel,
   usersByName: Index<User>,
   roomsById: Index<Room>,
+  tvEvents?: Array<TvEvent>,
   currentUser: User,
   actions: AppActions,
 };
@@ -126,6 +130,7 @@ export default class GameScreen extends Component<Props, State> {
       game,
       usersByName,
       roomsById,
+      tvEvents,
       actions,
     } = this.props;
     let { tab, chatSections } = this.state;
@@ -143,10 +148,15 @@ export default class GameScreen extends Component<Props, State> {
     }
     let scoring = isGameScoring(game);
     let isRengo = !!game.players.white_2;
+    let liveEvent =
+      !playing && game.event
+        ? getLiveEventForGame(game, tvEvents || [], roomsById, new Date())
+        : null;
     let className =
       "GameScreen GameScreen-" +
       (playing ? "playing" : "watching") +
-      (isRengo ? " GameScreen-rengo" : "");
+      (isRengo ? " GameScreen-rengo" : "") +
+      (liveEvent ? " GameScreen-has-tv-stream" : "");
     return (
       <div className={className}>
         <div className="GameScreen-header">
@@ -178,6 +188,16 @@ export default class GameScreen extends Component<Props, State> {
             <GameMoreMenu game={game} actions={actions} roomsById={roomsById} />
           )}
         </div>
+        {liveEvent ? (
+          <div className="GameScreen-tv-stream">
+            <div className="GameScreen-tv-stream-header">
+              <div className="GameScreen-tv-stream-title">
+                Live: {liveEvent.name}
+              </div>
+            </div>
+            <StreamEmbed event={liveEvent} />
+          </div>
+        ) : null}
         <div className="GameScreen-main">
           <BoardContainer
             game={game}

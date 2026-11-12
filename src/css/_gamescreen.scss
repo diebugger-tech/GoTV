@@ -55,6 +55,23 @@ a.GameMoreMenu-dropdown-item {
   padding: 60px 20px 20px 20px;
 }
 
+.GameScreen-tv-stream {
+  border-bottom: 1px solid $very-muted;
+  padding: 8px 10px;
+  background: #000;
+  box-sizing: border-box;
+
+  &-header {
+    margin-bottom: 6px;
+  }
+
+  &-title {
+    color: $inverted-fg;
+    font-size: 13px;
+    font-weight: bold;
+  }
+}
+
 .GameScreen-board {
   background: #555;
   margin: 0 auto;
@@ -375,6 +392,20 @@ a.BoardNav-next {
     padding-bottom: 30px;
     box-sizing: border-box;
     background: #333;
+  }
+
+  .GameScreen-tv-stream {
+    position: absolute;
+    left: 0;
+    top: 35px;
+    right: 350px;
+    height: 220px;
+    z-index: 3;
+    overflow-y: auto;
+  }
+
+  .GameScreen-has-tv-stream .GameScreen-board-container {
+    top: 220px;
   }
 
   .GameScreen-access-denied {

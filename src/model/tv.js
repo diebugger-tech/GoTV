@@ -1,7 +1,7 @@
 // @flow
 import { startOfDay, endOfDay } from "date-fns";
 import { normalizeUrl } from "../util/urls";
-import type { GameChannel } from "./types";
+import type { GameChannel, Room, Index } from "./types";
 
 // All games from the received game lists that are actually in progress:
 // not over and with both a black and a white player
@@ -279,6 +279,48 @@ export function getNextUpcomingEvent(
   now: Date
 ): ?TvEvent {
   return groupEventsByTime(events, now).upcoming[0] || null;
+}
+
+// Best-effort match between a watched KGS event game and a live calendar
+// entry, so the stream can show up next to the board. events.json has no
+// room/player fields to match against, so this is necessarily a heuristic:
+// with exactly one broadcast live, that's it; with several, prefer one
+// whose name/notes mentions the game's room (kgs_room) or a player
+// (kgs_players), falling back to the first live entry otherwise.
+export function getLiveEventForGame(
+  game: GameChannel,
+  events: Array<TvEvent>,
+  roomsById: Index<Room>,
+  now: Date
+): ?TvEvent {
+  if (!game.event) {
+    return null;
+  }
+  let live = getLiveEvents(events, now);
+  if (!live.length) {
+    return null;
+  }
+  if (live.length === 1) {
+    return live[0];
+  }
+  let needles = [];
+  let room = game.roomId ? roomsById[game.roomId] : null;
+  if (room && room.name) {
+    needles.push(room.name.toLowerCase());
+  }
+  if (game.players) {
+    for (let role of ["black", "white"]) {
+      let user = game.players[(role: any)];
+      if (user && user.name) {
+        needles.push(user.name.toLowerCase());
+      }
+    }
+  }
+  let matched = live.find((event) => {
+    let haystack = (event.name + " " + (event.notes || "")).toLowerCase();
+    return needles.some((needle) => haystack.indexOf(needle) !== -1);
+  });
+  return matched || live[0];
 }
 
 // ---------------------------------------------------------------------------

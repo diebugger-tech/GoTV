@@ -4,6 +4,7 @@ import GameList from "./game/GameList";
 import GameListFilter from "./game/GameListFilter";
 import GameScreen from "./game/GameScreen";
 import { InvariantError } from "../util/error";
+import { fetchTvEvents } from "../model/tv";
 import type {
   GameChannel,
   GameFilter,
@@ -12,6 +13,7 @@ import type {
   Index,
   AppActions,
 } from "../model";
+import type { TvEvent } from "../model/tv";
 
 type Props = {
   currentUser: ?User,
@@ -24,10 +26,25 @@ type Props = {
   actions: AppActions,
 };
 
-export default class WatchScreen extends Component<Props> {
+type State = {
+  tvEvents: Array<TvEvent>,
+};
+
+export default class WatchScreen extends Component<Props, State> {
   static defaultProps: Props;
+  state = {
+    tvEvents: [],
+  };
+
   componentDidMount() {
     window.scrollTo(0, 0);
+    fetchTvEvents()
+      .then((tvEvents) => {
+        this.setState({ tvEvents });
+      })
+      .catch((err) => {
+        console.warn("[tv] Failed to load live calendar events:", err);
+      });
   }
 
   componentDidUpdate(nextProps: Props) {
@@ -53,6 +70,7 @@ export default class WatchScreen extends Component<Props> {
       usersByName,
       actions,
     } = this.props;
+    let { tvEvents } = this.state;
     if (!currentUser) {
       throw new InvariantError("currentUser is required");
     }
@@ -65,6 +83,7 @@ export default class WatchScreen extends Component<Props> {
               game={activeGame}
               usersByName={usersByName}
               roomsById={roomsById}
+              tvEvents={tvEvents}
               currentUser={currentUser}
               actions={actions}
             />

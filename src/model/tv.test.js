@@ -1,6 +1,7 @@
 import {
   getLiveGames,
   getLiveEventGames,
+  getLiveEventForGame,
   validateTvEvent,
   getYouTubeVideoId,
   getTwitchChannel,
@@ -257,5 +258,82 @@ describe("getNextUpcomingEvent", () => {
   it("returns null when nothing is upcoming", () => {
     let now = new Date("2027-01-01T12:00:00");
     expect(getNextUpcomingEvent(events, now)).toBe(null);
+  });
+});
+
+describe("getLiveEventForGame", () => {
+  let now = new Date("2026-06-15T12:00:00");
+  let liveToday = (id, name, notes) =>
+    validateTvEvent({
+      id,
+      name,
+      notes,
+      date_start: "2026-06-15",
+      platform: "youtube",
+      stream_url: "https://www.youtube.com/@x",
+    });
+
+  it("returns null for games that aren't KGS server events", () => {
+    let game = makeGame(1, makeUser("a", 3), makeUser("b", 3), false);
+    expect(getLiveEventForGame(game, [liveToday("e1", "Event")], {}, now)).toBe(
+      null
+    );
+  });
+
+  it("returns null when nothing is live", () => {
+    let game = {
+      ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
+      event: true,
+    };
+    expect(getLiveEventForGame(game, [], {}, now)).toBe(null);
+  });
+
+  it("returns the only live event unambiguously", () => {
+    let game = {
+      ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
+      event: true,
+    };
+    let events = [liveToday("e1", "Some Cup")];
+    expect(getLiveEventForGame(game, events, {}, now).id).toBe("e1");
+  });
+
+  it("prefers a match on the game's room name (kgs_room)", () => {
+    let game = {
+      ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
+      event: true,
+      roomId: 42,
+    };
+    let roomsById = { 42: { id: 42, name: "LG Cup" } };
+    let events = [
+      liveToday("other", "Other Cup"),
+      liveToday("match", "LG Cup 2026 round 3"),
+    ];
+    expect(getLiveEventForGame(game, events, roomsById, now).id).toBe("match");
+  });
+
+  it("prefers a match on a player's name (kgs_players)", () => {
+    let game = {
+      ...makeGame(
+        1,
+        { name: "goplayer", rankVal: 3 },
+        { name: "otherplayer", rankVal: 3 },
+        false
+      ),
+      event: true,
+    };
+    let events = [
+      liveToday("other", "Other Cup"),
+      liveToday("match", "Finals", "Commentary features goplayer"),
+    ];
+    expect(getLiveEventForGame(game, events, {}, now).id).toBe("match");
+  });
+
+  it("falls back to the first live event when nothing matches", () => {
+    let game = {
+      ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
+      event: true,
+    };
+    let events = [liveToday("first", "Cup A"), liveToday("second", "Cup B")];
+    expect(getLiveEventForGame(game, events, {}, now).id).toBe("first");
   });
 });
