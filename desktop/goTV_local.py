@@ -97,22 +97,62 @@ class GoTvHandler(http.server.BaseHTTPRequestHandler):
     build_dir = DEFAULT_BUILD_DIR
 
     def do_GET(self):
+        if not self._request_allowed():
+            return
         if self._maybe_proxy("GET"):
             return
         self._handle("GET")
 
     def do_POST(self):
+        if not self._request_allowed():
+            return
         if self._maybe_proxy("POST"):
             return
         self._handle("POST")
 
     def do_OPTIONS(self):
+        if not self._request_allowed():
+            return
         if self._maybe_proxy("OPTIONS"):
             return
         self.send_error(404, "Not found")
 
     def do_HEAD(self):
+        if not self._request_allowed():
+            return
         self._handle("HEAD")
+
+    def _request_allowed(self):
+        """DNS-rebinding guard: only local host names and local origins.
+
+        The browser must address us as 127.0.0.1:<port> or localhost:<port>
+        (Host header), and any Origin header must be one of those two exact
+        origins. Anything else gets 403.
+        """
+        addr = self.server.server_address
+        port = addr[1] if isinstance(addr, tuple) else addr
+        allowed_hosts = {"127.0.0.1:%d" % port, "localhost:%d" % port}
+        allowed_origins = {
+            "http://127.0.0.1:%d" % port,
+            "http://localhost:%d" % port,
+        }
+        host = (self.headers.get("Host") or "").strip()
+        origin = (self.headers.get("Origin") or "").strip()
+        if host not in allowed_hosts:
+            self._deny("Forbidden host")
+            return False
+        if origin and origin not in allowed_origins:
+            self._deny("Forbidden origin")
+            return False
+        return True
+
+    def _deny(self, reason):
+        body = (reason + "\n").encode("utf-8")
+        self.send_response(403)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
 
     def _maybe_proxy(self, method):
         """Forward KGS API requests; returns True if handled."""
