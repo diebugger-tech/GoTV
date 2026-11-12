@@ -280,7 +280,7 @@ describe("groupEventsByTime", () => {
     validateTvEvent({
       id: "past",
       name: "Past",
-      date_start: "2026-05-30",
+      date_start: "2026-06-10",
       platform: "youtube",
       stream_url: "https://www.youtube.com/@x",
     }),
@@ -307,6 +307,68 @@ describe("groupEventsByTime", () => {
     expect(groups.today.map((e) => e.id)).toEqual(["today"]);
     expect(groups.upcoming.map((e) => e.id)).toEqual(["upcoming"]);
     expect(groups.past.map((e) => e.id)).toEqual(["past"]);
+    expect(groups.archive).toEqual([]);
+  });
+
+  it("drops a past event older than 14 days with nothing recorded", () => {
+    let now = new Date("2026-06-25T12:00:00"); // 15 days after "past" ended
+    let groups = groupEventsByTime(events, now);
+    // "past" (ended 2026-06-10) is now 15 days old with nothing recorded -> dropped.
+    // "today" (ended 2026-06-16) is only 9 days old -> still a recent past event.
+    expect(groups.past.map((e) => e.id)).toEqual(["today"]);
+    expect(groups.archive).toEqual([]);
+  });
+
+  it("archives (instead of dropping) an old past event with a video_id", () => {
+    let withRecording = [
+      ...events,
+      validateTvEvent({
+        id: "recorded",
+        name: "Recorded",
+        date_start: "2026-06-01",
+        platform: "youtube",
+        stream_url: "https://www.youtube.com/watch?v=abcDEF12",
+        video_id: "abcDEF12",
+      }),
+    ];
+    let now = new Date("2026-06-25T12:00:00"); // 24 days after "recorded" ended
+    let groups = groupEventsByTime(withRecording, now);
+    expect(groups.archive.map((e) => e.id)).toEqual(["recorded"]);
+    // "today" (ended 2026-06-16) is only 9 days old -> still a recent past event.
+    expect(groups.past.map((e) => e.id)).toEqual(["today"]);
+  });
+
+  it("archives an old past event with an sgf_url instead of a video_id", () => {
+    let withSgf = [
+      validateTvEvent({
+        id: "recorded-sgf",
+        name: "Recorded SGF",
+        date_start: "2026-06-01",
+        platform: "other",
+        stream_url: "https://example.com",
+        sgf_url: "https://example.com/game.sgf",
+      }),
+    ];
+    let now = new Date("2026-06-25T12:00:00");
+    let groups = groupEventsByTime(withSgf, now);
+    expect(groups.archive.map((e) => e.id)).toEqual(["recorded-sgf"]);
+  });
+
+  it("keeps a recent past event with a video_id out of the archive", () => {
+    let recentWithRecording = [
+      validateTvEvent({
+        id: "recent-recorded",
+        name: "Recent Recorded",
+        date_start: "2026-06-14",
+        platform: "youtube",
+        stream_url: "https://www.youtube.com/watch?v=abcDEF12",
+        video_id: "abcDEF12",
+      }),
+    ];
+    let now = new Date("2026-06-16T12:00:00"); // 2 days later - well under 14
+    let groups = groupEventsByTime(recentWithRecording, now);
+    expect(groups.past.map((e) => e.id)).toEqual(["recent-recorded"]);
+    expect(groups.archive).toEqual([]);
   });
 });
 

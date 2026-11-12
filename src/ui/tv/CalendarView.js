@@ -25,6 +25,7 @@ const GROUP_LABELS = {
   today: "Live & Today",
   upcoming: "Upcoming",
   past: "Past",
+  archive: "Archiv",
 };
 
 export default class CalendarView extends Component<Props, State> {
@@ -99,7 +100,7 @@ export default class CalendarView extends Component<Props, State> {
 
     return (
       <div className="CalendarView">
-        {["today", "upcoming", "past"].map((groupKey) => {
+        {["today", "upcoming", "past", "archive"].map((groupKey) => {
           let group = groups[(groupKey: any)];
           if (!group.length) {
             return null;

@@ -314,30 +314,49 @@ export function getEmbedUrlForEvent(
   return null;
 }
 
+const ARCHIVE_AFTER_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
 // Groups events by time relative to now:
-// today: now within [start of date_start, end of date_end (or date_start)]
-// upcoming: starts later; past: everything before
+// today: live now (see isEventLiveToday); upcoming: starts later;
+// past: ended less than 14 days ago; archive: ended 14+ days ago but kept
+// around (video_id or sgf_url - there's a recording to watch/replay)
+// instead of disappearing like a plain past event with nothing to show.
 export function groupEventsByTime(
   events: Array<TvEvent>,
   now: Date
-): { today: Array<TvEvent>, upcoming: Array<TvEvent>, past: Array<TvEvent> } {
+): {
+  today: Array<TvEvent>,
+  upcoming: Array<TvEvent>,
+  past: Array<TvEvent>,
+  archive: Array<TvEvent>,
+} {
   let groups: {
     today: Array<TvEvent>,
     upcoming: Array<TvEvent>,
     past: Array<TvEvent>,
-  } = { today: [], upcoming: [], past: [] };
+    archive: Array<TvEvent>,
+  } = { today: [], upcoming: [], past: [], archive: [] };
   let nowTime = now.getTime();
   for (let event of events) {
     let start = new Date(event.date_start);
     if (isEventLiveToday(event, now)) {
       groups.today.push(event);
-    } else if (nowTime < startOfDay(start).getTime()) {
-      groups.upcoming.push(event);
-    } else {
-      groups.past.push(event);
+      continue;
     }
+    if (nowTime < startOfDay(start).getTime()) {
+      groups.upcoming.push(event);
+      continue;
+    }
+    let end = event.date_end ? new Date(event.date_end) : start;
+    let ageMs = nowTime - endOfDay(end).getTime();
+    if (ageMs < ARCHIVE_AFTER_MS) {
+      groups.past.push(event);
+    } else if (event.video_id || event.sgf_url) {
+      groups.archive.push(event);
+    }
+    // else: past its 14-day window with nothing recorded - drop it
   }
-  for (let key of ["today", "upcoming", "past"]) {
+  for (let key of ["today", "upcoming", "past", "archive"]) {
     groups[(key: any)].sort(
       (a: TvEvent, b: TvEvent) =>
         new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
