@@ -27,6 +27,7 @@ type Props = {
   onSelectChallenge: (number) => any,
   onShowGames: (filter: GameFilter) => any,
   onSendChat: (string) => any,
+  onOpenTv: (string) => any,
   setMessagesDivRef: (HTMLElement | null) => any,
   setMessageInputRef: (HTMLElement | null) => any,
 };
@@ -43,6 +44,7 @@ export default class RoomChat extends Component<Props> {
       onSendChat,
       onJoinGame,
       onSelectChallenge,
+      onOpenTv,
       setMessagesDivRef,
       setMessageInputRef,
     } = this.props;
@@ -76,6 +78,7 @@ export default class RoomChat extends Component<Props> {
               onUserDetail={onUserDetail}
               onJoinGame={onJoinGame}
               onSelectChallenge={onSelectChallenge}
+              onOpenTv={onOpenTv}
             />
           </div>
         </div>

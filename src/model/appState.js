@@ -27,6 +27,7 @@ export function getEmptyServerState() {
     showUnderConstruction: false,
     showFeedbackModal: false,
     reviewGameId: null,
+    tvStreamUrl: null,
   };
 }
 

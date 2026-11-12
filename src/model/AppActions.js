@@ -759,6 +759,15 @@ export class AppActions {
     this._store.dispatch({ type: "HIDE_FEEDBACK_MODAL" });
   };
 
+  onOpenTvStream = (url: string) => {
+    this._store.dispatch({ type: "TV_OPEN_STREAM", url });
+    this.onChangeNav("tv");
+  };
+
+  onCloseTvStream = () => {
+    this._store.dispatch({ type: "TV_CLOSE_STREAM" });
+  };
+
   onClickContribute = () => {
     window.open("https://github.com/jkk/shinkgs", "_blank");
   };

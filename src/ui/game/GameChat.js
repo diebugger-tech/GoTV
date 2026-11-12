@@ -8,11 +8,18 @@ type Props = {
   chatSections: Array<GameChatSection>,
   usersByName: Index<User>,
   onUserDetail: (string) => any,
+  onOpenTv: (string) => any,
 };
 
 export default class GameChat extends Component<Props> {
   render() {
-    let { currentUser, chatSections, usersByName, onUserDetail } = this.props;
+    let {
+      currentUser,
+      chatSections,
+      usersByName,
+      onUserDetail,
+      onOpenTv,
+    } = this.props;
     return (
       <div className="GameChat">
         {chatSections.map(({ nodeId, moveNum, actions, messages }) => (
@@ -33,6 +40,7 @@ export default class GameChat extends Component<Props> {
                 messages={messages}
                 usersByName={usersByName}
                 onUserDetail={onUserDetail}
+                onOpenTv={onOpenTv}
               />
             </div>
           </div>

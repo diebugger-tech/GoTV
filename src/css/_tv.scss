@@ -16,6 +16,28 @@
     padding: 10px;
     border-bottom: 1px solid $very-muted;
   }
+
+  &-stream {
+    border-bottom: 1px solid $very-muted;
+    padding: 10px;
+
+    &-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    &-title {
+      font-weight: bold;
+    }
+
+    &-close {
+      font-size: 18px;
+      color: $semi-muted;
+      padding: 0 4px;
+    }
+  }
 }
 
 .CalendarView {
@@ -137,5 +159,17 @@
       color: $link-color;
       font-size: 13px;
     }
+  }
+}
+
+.ChatMessages-item-tv {
+  margin-top: 4px;
+
+  &-button {
+    font-size: 12px;
+    padding: 3px 8px;
+    border: 1px solid $link-color;
+    border-radius: 3px;
+    color: $link-color;
   }
 }

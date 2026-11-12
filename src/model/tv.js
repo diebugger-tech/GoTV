@@ -1,5 +1,6 @@
 // @flow
 import { startOfDay, endOfDay } from "date-fns";
+import { normalizeUrl } from "../util/urls";
 import type { GameChannel } from "./types";
 
 // Rank value of the weaker player in a game, or null if it can't be determined
@@ -266,4 +267,93 @@ export function groupEventsByTime(
     );
   }
   return groups;
+}
+
+// ---------------------------------------------------------------------------
+// Stream URLs from chat
+// ---------------------------------------------------------------------------
+
+export type StreamUrlInfo = {
+  platform: "youtube" | "twitch" | "other",
+  embedUrl: ?string,
+  externalUrl: string,
+};
+
+// Twitch video id from a twitch.tv/videos/<id> URL, or null
+export function getTwitchVideoId(url: string): ?string {
+  let parsed;
+  try {
+    parsed = new URL(normalizeUrl(url));
+  } catch (e) {
+    return null;
+  }
+  let host = parsed.hostname.replace(/^www\./, "");
+  if (host !== "twitch.tv" && host !== "m.twitch.tv") {
+    return null;
+  }
+  let parts = parsed.pathname.split("/");
+  if (parts[1] === "videos" && parts[2] && /^\d+$/.test(parts[2])) {
+    return parts[2];
+  }
+  return null;
+}
+
+// Info for an arbitrary stream URL from chat: official embed URL if possible,
+// otherwise null (UI falls back to "Extern öffnen")
+export function getStreamUrlInfo(
+  url: string,
+  hostname?: string
+): StreamUrlInfo {
+  let externalUrl = normalizeUrl(url);
+  let host = hostname || "localhost";
+
+  let youTubeId = getYouTubeVideoId(externalUrl);
+  if (youTubeId) {
+    return {
+      platform: "youtube",
+      embedUrl: "https://www.youtube-nocookie.com/embed/" + youTubeId,
+      externalUrl,
+    };
+  }
+
+  let twitchVideoId = getTwitchVideoId(externalUrl);
+  if (twitchVideoId) {
+    return {
+      platform: "twitch",
+      embedUrl:
+        "https://player.twitch.tv/?video=" + twitchVideoId + "&parent=" + host,
+      externalUrl,
+    };
+  }
+
+  let twitchChannel = getTwitchChannel(externalUrl);
+  if (twitchChannel) {
+    return {
+      platform: "twitch",
+      embedUrl:
+        "https://player.twitch.tv/?channel=" +
+        twitchChannel +
+        "&parent=" +
+        host,
+      externalUrl,
+    };
+  }
+
+  let normalizedHost = "";
+  try {
+    normalizedHost = new URL(externalUrl).hostname.replace(/^www\./, "");
+  } catch (e) {
+    return { platform: "other", embedUrl: null, externalUrl };
+  }
+  if (
+    normalizedHost === "youtube.com" ||
+    normalizedHost === "m.youtube.com" ||
+    normalizedHost === "youtu.be"
+  ) {
+    return { platform: "youtube", embedUrl: null, externalUrl };
+  }
+  if (normalizedHost === "twitch.tv" || normalizedHost === "m.twitch.tv") {
+    return { platform: "twitch", embedUrl: null, externalUrl };
+  }
+  return { platform: "other", embedUrl: null, externalUrl };
 }

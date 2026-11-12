@@ -2,7 +2,8 @@
 import React, { PureComponent as Component } from "react";
 import GameList from "./game/GameList";
 import CalendarView from "./tv/CalendarView";
-import { CheckboxInput, TabNav } from "./common";
+import StreamEmbed from "./tv/StreamEmbed";
+import { A, CheckboxInput, TabNav } from "./common";
 import {
   getLiveGames,
   sortGamesByStrength,
@@ -15,6 +16,7 @@ type Props = {
   activeGames: Array<GameChannel>,
   roomsById: Index<Room>,
   actions: AppActions,
+  tvStreamUrl: ?string,
 };
 
 type State = {
@@ -33,7 +35,7 @@ export default class TvScreen extends Component<Props, State> {
   }
 
   render() {
-    let { activeGames, roomsById, actions } = this.props;
+    let { activeGames, roomsById, actions, tvStreamUrl } = this.props;
     let { activeTabId, danOnly } = this.state;
 
     let sorted = sortGamesByStrength(getLiveGames(activeGames));
@@ -79,6 +81,20 @@ export default class TvScreen extends Component<Props, State> {
         <div className="TvScreen-header">
           <div className="TvScreen-title">Go TV</div>
         </div>
+        {tvStreamUrl ? (
+          <div className="TvScreen-stream">
+            <div className="TvScreen-stream-header">
+              <div className="TvScreen-stream-title">Stream</div>
+              <A
+                button
+                className="TvScreen-stream-close"
+                onClick={actions.onCloseTvStream}>
+                ×
+              </A>
+            </div>
+            <StreamEmbed url={tvStreamUrl} />
+          </div>
+        ) : null}
         <TabNav
           tabs={tabs}
           activeTabId={activeTabId}

@@ -439,6 +439,7 @@ export default class ChatScreen extends Component<ChatScreenProps, State> {
                 onJoinGame={actions.onJoinGame}
                 onSelectChallenge={actions.onSelectChallenge}
                 onSendChat={this._onSendChat}
+                onOpenTv={actions.onOpenTvStream}
                 setMessagesDivRef={this._setMessagesDivRef}
                 setMessageInputRef={this._setMessageInputRef}
               />

@@ -281,6 +281,7 @@ export default class GameScreen extends Component<Props, State> {
                     chatSections={chatSections}
                     usersByName={usersByName}
                     onUserDetail={actions.onUserDetail}
+                    onOpenTv={actions.onOpenTvStream}
                   />
                 ) : null}
               </div>

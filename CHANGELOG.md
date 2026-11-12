@@ -25,6 +25,15 @@
 - Unit-Tests für Sortierung, Validierung, URL-/Embed-Logik (17 Tests)
 - `.eslintrc`: jest-Global `describe` ergänzt
 
+### Phase 4 — Stream-Links im Chat
+- `src/util/urls.js`: extract_urls/normalize_url aus Tiger's Mouth portiert
+  (youtube.com, youtu.be, twitch.tv) + isStreamUrl
+- Chat-Nachrichten (Room- und Game-Chat) zeigen bei Stream-Links zusätzlich
+  "Im TV öffnen"; öffnet den Embed im TV-Tab (AppState tvStreamUrl,
+  actions.onOpenTvStream/onCloseTvStream)
+- autolinker.js bleibt für die Link-Darstellung zuständig; der Button ist additiv
+- Unit-Tests für URL-Erkennung (5 Tests)
+
 ## v0.3.0
 - Challenge creation
 - Challenge negotation (by challenger only for now)

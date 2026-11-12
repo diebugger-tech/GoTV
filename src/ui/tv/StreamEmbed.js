@@ -1,11 +1,12 @@
 // @flow
 import React, { PureComponent as Component } from "react";
 import { Button } from "../common";
-import { getEmbedUrlForEvent } from "../../model/tv";
-import type { TvEvent } from "../../model/tv";
+import { getEmbedUrlForEvent, getStreamUrlInfo } from "../../model/tv";
+import type { TvEvent, StreamUrlInfo } from "../../model/tv";
 
 type Props = {
-  event: TvEvent,
+  event?: TvEvent,
+  url?: string,
 };
 
 type State = {
@@ -26,23 +27,47 @@ export default class StreamEmbed extends Component<Props, State> {
     loaded: false,
   };
 
-  render() {
-    let { event } = this.props;
-    let embedUrl = getEmbedUrlForEvent(event, window.location.hostname);
+  _getInfo(): StreamUrlInfo {
+    let { event, url } = this.props;
+    if (url) {
+      return getStreamUrlInfo(url, window.location.hostname);
+    }
+    if (event) {
+      return {
+        platform: event.platform,
+        embedUrl: getEmbedUrlForEvent(event, window.location.hostname),
+        externalUrl: event.stream_url,
+      };
+    }
+    return { platform: "other", embedUrl: null, externalUrl: "" };
+  }
 
-    if (!embedUrl) {
+  _getTitle(): string {
+    let { event, url } = this.props;
+    if (event) {
+      return event.name;
+    }
+    return url || "Stream";
+  }
+
+  render() {
+    let info = this._getInfo();
+    let title = this._getTitle();
+    let platformLabel = PLATFORM_LABEL[info.platform];
+
+    if (!info.embedUrl) {
       return (
         <div className="StreamEmbed">
           <div className="StreamEmbed-notice">
-            {PLATFORM_LABEL[event.platform]
+            {platformLabel
               ? "Dieser Stream kann nicht direkt eingebettet werden (" +
-                PLATFORM_LABEL[event.platform] +
+                platformLabel +
                 ")."
               : "Dieser Stream kann nicht direkt eingebettet werden."}
           </div>
           <a
             className="Button"
-            href={event.stream_url}
+            href={info.externalUrl}
             target="_blank"
             rel="noopener noreferrer">
             Extern öffnen
@@ -55,15 +80,14 @@ export default class StreamEmbed extends Component<Props, State> {
       return (
         <div className="StreamEmbed StreamEmbed-placeholder">
           <div className="StreamEmbed-placeholder-text">
-            Stream wird über den offiziellen {PLATFORM_LABEL[event.platform]}
-            -Player eingebettet. Erst nach Klick wird eine Verbindung zu{" "}
-            {PLATFORM_LABEL[event.platform]} aufgebaut.
+            Stream wird über den offiziellen {platformLabel}-Player eingebettet.
+            Erst nach Klick wird eine Verbindung zu {platformLabel} aufgebaut.
           </div>
           <div className="StreamEmbed-actions">
             <Button onClick={this._onLoad}>Stream laden</Button>
             <a
               className="Button Button-secondary"
-              href={event.stream_url}
+              href={info.externalUrl}
               target="_blank"
               rel="noopener noreferrer">
               Extern öffnen
@@ -78,8 +102,8 @@ export default class StreamEmbed extends Component<Props, State> {
         <div className="StreamEmbed-frame">
           <iframe
             className="StreamEmbed-iframe"
-            src={embedUrl}
-            title={event.name}
+            src={info.embedUrl}
+            title={title}
             allow="autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
           />
@@ -87,7 +111,7 @@ export default class StreamEmbed extends Component<Props, State> {
         <div className="StreamEmbed-external">
           <a
             className="StreamEmbed-external-link"
-            href={event.stream_url}
+            href={info.externalUrl}
             target="_blank"
             rel="noopener noreferrer">
             Extern öffnen

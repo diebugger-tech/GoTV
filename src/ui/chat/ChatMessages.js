@@ -6,6 +6,7 @@ import GameTimeSystem from "../game/GameTimeSystem";
 import { A, RichContent } from "../common";
 import UserName from "../user/UserName";
 import { formatLocaleTime } from "../../util/date";
+import { extractUrls, normalizeUrl, isStreamUrl } from "../../util/urls";
 import type {
   User,
   ConversationMessage,
@@ -18,6 +19,7 @@ type Props = {
   message: ConversationMessage,
   sender: User | string,
   onUserDetail: (string) => any,
+  onOpenTv?: (string) => any,
 };
 
 class ChatMessageItem extends Component<Props> {
@@ -27,6 +29,9 @@ class ChatMessageItem extends Component<Props> {
     if (!sender) {
       sender = "[Unknown]";
     }
+    let streamUrls = extractUrls(message.body)
+      .map(normalizeUrl)
+      .filter(isStreamUrl);
     let className =
       "ChatMessages-item" +
       ((message.announcement ? " ChatMessages-item-announcement" : "") +
@@ -51,6 +56,19 @@ class ChatMessageItem extends Component<Props> {
           <div className="ChatMessages-item-body">
             <RichContent content={message.body} />
           </div>
+          {streamUrls.length ? (
+            <div className="ChatMessages-item-tv">
+              {streamUrls.map((url) => (
+                <A
+                  button
+                  key={url}
+                  className="ChatMessages-item-tv-button"
+                  onClick={this._onOpenTv.bind(this, url)}>
+                  Im TV öffnen
+                </A>
+              ))}
+            </div>
+          ) : null}
         </div>
         {message.date ? (
           <div className="ChatMessages-item-time">
@@ -64,6 +82,12 @@ class ChatMessageItem extends Component<Props> {
   _onUserDetail = () => {
     let { sender } = this.props;
     this.props.onUserDetail(typeof sender === "string" ? sender : sender.name);
+  };
+
+  _onOpenTv = (url: string) => {
+    if (this.props.onOpenTv) {
+      this.props.onOpenTv(url);
+    }
   };
 }
 
@@ -122,6 +146,7 @@ type PropsChatMessages = {
   onUserDetail: (string) => any,
   onJoinGame?: (gameId: number | string) => any,
   onSelectChallenge?: (number) => any,
+  onOpenTv?: (string) => any,
 };
 
 export default class ChatMessages extends Component<PropsChatMessages> {
@@ -161,6 +186,7 @@ export default class ChatMessages extends Component<PropsChatMessages> {
               message={item.message}
               sender={usersByName[item.message.sender] || item.message.sender}
               onUserDetail={onUserDetail}
+              onOpenTv={this.props.onOpenTv}
             />
           );
         } else if (item.type === "game") {
@@ -181,6 +207,7 @@ export default class ChatMessages extends Component<PropsChatMessages> {
           message={msg}
           sender={usersByName[msg.sender] || msg.sender}
           onUserDetail={onUserDetail}
+          onOpenTv={this.props.onOpenTv}
         />
       ));
     }

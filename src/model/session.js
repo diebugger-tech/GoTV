@@ -128,6 +128,16 @@ export function handleSessionMessage(
         ...prevState,
         showFeedbackModal: false,
       };
+    case "TV_OPEN_STREAM":
+      return {
+        ...prevState,
+        tvStreamUrl: msg.url,
+      };
+    case "TV_CLOSE_STREAM":
+      return {
+        ...prevState,
+        tvStreamUrl: null,
+      };
     case "UPDATE_PREFERENCES":
       return {
         ...prevState,
