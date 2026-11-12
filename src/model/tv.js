@@ -1,4 +1,5 @@
 // @flow
+import { startOfDay, endOfDay } from "date-fns";
 import type { GameChannel } from "./types";
 
 // Rank value of the weaker player in a game, or null if it can't be determined
@@ -56,4 +57,213 @@ export function sortGamesByStrength(
     return bv - av;
   });
   return sorted;
+}
+
+// ---------------------------------------------------------------------------
+// TV event calendar
+// ---------------------------------------------------------------------------
+
+export type TvPlatform = "youtube" | "twitch" | "other";
+
+export type TvEvent = {
+  id: string,
+  name: string,
+  date_start: string,
+  date_end?: string,
+  platform: TvPlatform,
+  stream_url: string,
+  video_id?: string,
+  sgf_url?: string,
+  notes?: string,
+};
+
+const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{6,}$/;
+
+// Returns a valid TvEvent, or null if the entry is unusable (caller logs + skips)
+export function validateTvEvent(value: Object): ?TvEvent {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  if (typeof value.id !== "string" || !value.id) {
+    return null;
+  }
+  if (typeof value.name !== "string" || !value.name) {
+    return null;
+  }
+  if (
+    typeof value.date_start !== "string" ||
+    isNaN(Date.parse(value.date_start))
+  ) {
+    return null;
+  }
+  if (
+    value.date_end !== undefined &&
+    value.date_end !== null &&
+    (typeof value.date_end !== "string" || isNaN(Date.parse(value.date_end)))
+  ) {
+    return null;
+  }
+  if (
+    value.platform !== "youtube" &&
+    value.platform !== "twitch" &&
+    value.platform !== "other"
+  ) {
+    return null;
+  }
+  if (typeof value.stream_url !== "string" || !value.stream_url) {
+    return null;
+  }
+  for (let key of ["video_id", "sgf_url", "notes"]) {
+    if (
+      value[key] !== undefined &&
+      value[key] !== null &&
+      typeof value[key] !== "string"
+    ) {
+      return null;
+    }
+  }
+  let event: TvEvent = {
+    id: value.id,
+    name: value.name,
+    date_start: value.date_start,
+    platform: value.platform,
+    stream_url: value.stream_url,
+  };
+  if (value.date_end) {
+    event.date_end = value.date_end;
+  }
+  if (value.video_id) {
+    event.video_id = value.video_id;
+  }
+  if (value.sgf_url) {
+    event.sgf_url = value.sgf_url;
+  }
+  if (value.notes) {
+    event.notes = value.notes;
+  }
+  return event;
+}
+
+// Extract a YouTube video id from a watch/share/embed/live/shorts URL.
+// Channel URLs (@handle, /channel/..., /user/...) are not embeddable -> null.
+export function getYouTubeVideoId(url: string): ?string {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (e) {
+    return null;
+  }
+  let host = parsed.hostname.replace(/^www\./, "");
+  if (host === "youtu.be") {
+    let id = parsed.pathname.split("/")[1];
+    return id && YOUTUBE_ID_RE.test(id) ? id : null;
+  }
+  if (host !== "youtube.com" && host !== "m.youtube.com") {
+    return null;
+  }
+  if (parsed.pathname === "/watch") {
+    let id = parsed.searchParams.get("v");
+    return id && YOUTUBE_ID_RE.test(id) ? id : null;
+  }
+  let parts = parsed.pathname.split("/");
+  if (
+    (parts[1] === "embed" || parts[1] === "live" || parts[1] === "shorts") &&
+    parts[2]
+  ) {
+    return YOUTUBE_ID_RE.test(parts[2]) ? parts[2] : null;
+  }
+  return null;
+}
+
+// Extract a Twitch channel name from a twitch.tv URL, or null for
+// video/clip links or unrelated URLs
+export function getTwitchChannel(url: string): ?string {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (e) {
+    return null;
+  }
+  let host = parsed.hostname.replace(/^www\./, "");
+  if (host !== "twitch.tv" && host !== "m.twitch.tv") {
+    return null;
+  }
+  let parts = parsed.pathname.split("/");
+  let name = parts[1];
+  if (
+    !name ||
+    name === "videos" ||
+    name === "clip" ||
+    name === "directory" ||
+    name === "p"
+  ) {
+    return null;
+  }
+  return name;
+}
+
+// Official embed URL for an event, or null if embedding is not possible
+// (then the UI must only offer "Extern öffnen"). hostname is used for the
+// Twitch parent parameter.
+export function getEmbedUrlForEvent(
+  event: TvEvent,
+  hostname?: string
+): ?string {
+  if (event.platform === "youtube") {
+    let id = event.video_id || getYouTubeVideoId(event.stream_url);
+    if (id) {
+      return "https://www.youtube-nocookie.com/embed/" + id;
+    }
+    return null;
+  }
+  if (event.platform === "twitch") {
+    let host = hostname || "localhost";
+    if (event.video_id) {
+      return (
+        "https://player.twitch.tv/?video=" + event.video_id + "&parent=" + host
+      );
+    }
+    let channel = getTwitchChannel(event.stream_url);
+    if (channel) {
+      return "https://player.twitch.tv/?channel=" + channel + "&parent=" + host;
+    }
+    return null;
+  }
+  return null;
+}
+
+// Groups events by time relative to now:
+// today: now within [start of date_start, end of date_end (or date_start)]
+// upcoming: starts later; past: everything before
+export function groupEventsByTime(
+  events: Array<TvEvent>,
+  now: Date
+): { today: Array<TvEvent>, upcoming: Array<TvEvent>, past: Array<TvEvent> } {
+  let groups: {
+    today: Array<TvEvent>,
+    upcoming: Array<TvEvent>,
+    past: Array<TvEvent>,
+  } = { today: [], upcoming: [], past: [] };
+  let nowTime = now.getTime();
+  for (let event of events) {
+    let start = new Date(event.date_start);
+    let end = event.date_end ? new Date(event.date_end) : start;
+    if (
+      nowTime >= startOfDay(start).getTime() &&
+      nowTime <= endOfDay(end).getTime()
+    ) {
+      groups.today.push(event);
+    } else if (nowTime < startOfDay(start).getTime()) {
+      groups.upcoming.push(event);
+    } else {
+      groups.past.push(event);
+    }
+  }
+  for (let key of ["today", "upcoming", "past"]) {
+    groups[(key: any)].sort(
+      (a: TvEvent, b: TvEvent) =>
+        new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
+    );
+  }
+  return groups;
 }

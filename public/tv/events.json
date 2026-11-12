@@ -1,0 +1,36 @@
+{
+  "events": [
+    {
+      "id": "globis-cup-2026",
+      "name": "Globis Cup 2026",
+      "date_start": "2026-05-30",
+      "platform": "youtube",
+      "stream_url": "https://www.youtube.com/@nipponfoundation",
+      "notes": "International tournament for young professionals."
+    },
+    {
+      "id": "lg-cup-2026",
+      "name": "LG Cup 2026",
+      "date_start": "2026-06-15",
+      "platform": "youtube",
+      "stream_url": "https://www.youtube.com/@BadukTV",
+      "notes": "Major international tournament, broadcast on Baduk TV."
+    },
+    {
+      "id": "egc-2026",
+      "name": "European Go Congress 2026",
+      "date_start": "2026-07-20",
+      "platform": "youtube",
+      "stream_url": "https://www.youtube.com/@EuropeanGoFederation",
+      "notes": "Largest European go event, several streams over two weeks."
+    },
+    {
+      "id": "ing-cup-2026",
+      "name": "Ing Cup 2026",
+      "date_start": "2026-08-10",
+      "platform": "youtube",
+      "stream_url": "https://www.youtube.com/@gobaduk1",
+      "notes": "Ing Cup, broadcast on gobaduk TV."
+    }
+  ]
+}

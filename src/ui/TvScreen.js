@@ -1,7 +1,8 @@
 // @flow
 import React, { PureComponent as Component } from "react";
 import GameList from "./game/GameList";
-import { CheckboxInput } from "./common";
+import CalendarView from "./tv/CalendarView";
+import { CheckboxInput, TabNav } from "./common";
 import {
   getLiveGames,
   sortGamesByStrength,
@@ -17,11 +18,13 @@ type Props = {
 };
 
 type State = {
+  activeTabId: string,
   danOnly: boolean,
 };
 
 export default class TvScreen extends Component<Props, State> {
   state = {
+    activeTabId: "live",
     danOnly: false,
   };
 
@@ -31,7 +34,7 @@ export default class TvScreen extends Component<Props, State> {
 
   render() {
     let { activeGames, roomsById, actions } = this.props;
-    let { danOnly } = this.state;
+    let { activeTabId, danOnly } = this.state;
 
     let sorted = sortGamesByStrength(getLiveGames(activeGames));
     let games = danOnly
@@ -43,26 +46,51 @@ export default class TvScreen extends Component<Props, State> {
         })
       : sorted;
 
+    let tabs = [
+      {
+        id: "live",
+        label: "Live",
+        content: (
+          <div className="TvScreen-live">
+            <div className="TvScreen-live-header">
+              <CheckboxInput
+                label="Dan only"
+                checked={danOnly}
+                onChange={this._onDanOnlyChange}
+              />
+            </div>
+            <GameList
+              games={games}
+              roomsById={roomsById}
+              onSelect={actions.onJoinGame}
+            />
+          </div>
+        ),
+      },
+      {
+        id: "calendar",
+        label: "Kalender",
+        content: <CalendarView />,
+      },
+    ];
+
     return (
       <div className="TvScreen">
         <div className="TvScreen-header">
-          <div className="TvScreen-title">Live</div>
-          <CheckboxInput
-            label="Dan only"
-            checked={danOnly}
-            onChange={this._onDanOnlyChange}
-          />
+          <div className="TvScreen-title">Go TV</div>
         </div>
-        <div className="TvScreen-games">
-          <GameList
-            games={games}
-            roomsById={roomsById}
-            onSelect={actions.onJoinGame}
-          />
-        </div>
+        <TabNav
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onSelectTab={this._onSelectTab}
+        />
       </div>
     );
   }
+
+  _onSelectTab = (id: string) => {
+    this.setState({ activeTabId: id });
+  };
 
   _onDanOnlyChange = () => {
     this.setState({ danOnly: !this.state.danOnly });

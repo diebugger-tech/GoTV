@@ -14,6 +14,17 @@
 - `src/ui/TvScreen.js`: Live-Liste (GameList) mit Filter "Dan only";
   Klick öffnet die bestehende Beobachten-Ansicht (actions.onJoinGame)
 
+### Phase 3 — Turnierkalender
+- `public/tv/events.json` (Schema aus Tiger's Mouth, erweitert: id, name,
+  date_start/date_end, platform, stream_url, video_id?, sgf_url?, notes?)
+- Laden per fetch beim Öffnen des Kalender-Tabs; ungültige Einträge werden
+  geloggt und übersprungen
+- Gruppen "Live & Today" / "Upcoming" / "Past" (date-fns)
+- Offizielle Embed-Player mit Zwei-Klick-Lösung (youtube-nocookie, player.twitch.tv
+  mit parent=hostname); Fallback "Extern öffnen" (target=_blank rel=noopener)
+- Unit-Tests für Sortierung, Validierung, URL-/Embed-Logik (17 Tests)
+- `.eslintrc`: jest-Global `describe` ergänzt
+
 ## v0.3.0
 - Challenge creation
 - Challenge negotation (by challenger only for now)
