@@ -1,7 +1,7 @@
 // @flow
 import React, { PureComponent as Component } from "react";
 import StreamEmbed from "./StreamEmbed";
-import { formatLocaleDate } from "../../util/date";
+import { formatLocaleDate, formatLocaleTime } from "../../util/date";
 import type { TvEvent } from "../../model/tv";
 
 type Props = {
@@ -17,6 +17,11 @@ const PLATFORM_LABEL = {
 
 export function formatEventDateRange(event: TvEvent): string {
   let start = formatLocaleDate(event.date_start);
+  if (event.start) {
+    // "start" carries the precise time (with timezone) - shown in the
+    // viewer's local time, unlike date_start which is date-only.
+    start += " " + formatLocaleTime(event.start);
+  }
   if (event.date_end) {
     return start + " – " + formatLocaleDate(event.date_end);
   }

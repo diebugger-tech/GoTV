@@ -46,6 +46,8 @@ export type TvEvent = {
   sgf_url?: string,
   notes?: string,
   channel?: { platform: "youtube" | "twitch", id: string },
+  start?: string,
+  source?: string,
 };
 
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{6,}$/;
@@ -84,7 +86,7 @@ export function validateTvEvent(value: Object): ?TvEvent {
   if (typeof value.stream_url !== "string" || !value.stream_url) {
     return null;
   }
-  for (let key of ["video_id", "sgf_url", "notes"]) {
+  for (let key of ["video_id", "sgf_url", "notes", "source"]) {
     if (
       value[key] !== undefined &&
       value[key] !== null &&
@@ -92,6 +94,13 @@ export function validateTvEvent(value: Object): ?TvEvent {
     ) {
       return null;
     }
+  }
+  if (
+    value.start !== undefined &&
+    value.start !== null &&
+    (typeof value.start !== "string" || isNaN(Date.parse(value.start)))
+  ) {
+    return null;
   }
   let channel;
   if (value.channel !== undefined && value.channel !== null) {
@@ -127,6 +136,12 @@ export function validateTvEvent(value: Object): ?TvEvent {
   }
   if (channel) {
     event.channel = channel;
+  }
+  if (value.start) {
+    event.start = value.start;
+  }
+  if (value.source) {
+    event.source = value.source;
   }
   return event;
 }

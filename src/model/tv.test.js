@@ -123,6 +123,34 @@ describe("validateTvEvent", () => {
       })
     ).toBe(null);
   });
+
+  it("accepts valid start and source fields", () => {
+    let event = validateTvEvent({
+      id: "x",
+      name: "X",
+      date_start: "2026-01-01",
+      platform: "twitch",
+      stream_url: "https://x",
+      start: "2026-01-01T19:00:00+01:00",
+      source: "twitch-egf",
+    });
+    expect(event).not.toBe(null);
+    expect(event.start).toBe("2026-01-01T19:00:00+01:00");
+    expect(event.source).toBe("twitch-egf");
+  });
+
+  it("rejects an unparseable start field", () => {
+    expect(
+      validateTvEvent({
+        id: "x",
+        name: "X",
+        date_start: "2026-01-01",
+        platform: "twitch",
+        stream_url: "https://x",
+        start: "not-a-datetime",
+      })
+    ).toBe(null);
+  });
 });
 
 describe("getYouTubeVideoId", () => {
