@@ -31,6 +31,15 @@
       "platform": "youtube",
       "stream_url": "https://www.youtube.com/@gobaduk1",
       "notes": "Ing Cup, broadcast on gobaduk TV."
+    },
+    {
+      "id": "deepmind-lee-sedol-2016-game1",
+      "name": "AlphaGo vs Lee Sedol – Spiel 1 (Kommentar: Michael Redmond 9p)",
+      "date_start": "2016-03-09",
+      "platform": "youtube",
+      "stream_url": "https://www.youtube.com/watch?v=vFr3K2DORc8",
+      "video_id": "vFr3K2DORc8",
+      "notes": "Beispiel-Event mit einbettbarem Video (offizieller Google-DeepMind-Kanal): kompletter Livestream von Spiel 1 des Google-DeepMind-Challenge-Match 2016, Kommentar von Michael Redmond (9p) und Chris Garlock."
     }
   ]
 }
