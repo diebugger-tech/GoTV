@@ -1,5 +1,18 @@
 # Change Log
 
+### Desktop-App (GNOME, lokal)
+- `desktop/goTV_local.py`: ThreadingHTTPServer (nur 127.0.0.1, Port 8788),
+  liefert den Desktop-Build aus; /igs-bridge antwortet 501 (Platzhalter)
+- KGS-Zugriff über lokalen Proxy `/json-cors/access` (KGS erlaubt CORS nur für
+  eine Origin-Whitelist — direkter Zugriff von localhost wurde gemessen: 403);
+  Cookies und Long-Polling werden durchgereicht, Origin-Header wird entfernt
+- `desktop/launch-gotv`: Health-Check, Server-Start, Browser-Erkennung
+  (Chromium-Familie, nativ/Flatpak/Snap), App-Fenster via --app mit eigenem
+  Profil unter ~/.local/share/gotv
+- `desktop/gotv.desktop`: "Go TV" mit Projekt-Icon und StartupWMClass=gotv
+- `desktop/install.sh` / `uninstall.sh`: user-scoped (kein sudo), Desktop-Build
+  nach build-desktop/ (getrennt vom Web-Build), saubere Deinstallation
+
 ## Unreleased (Go TV fork)
 
 ### Phase 0 — Lauffähig auf Node 24

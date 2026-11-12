@@ -3,6 +3,11 @@
 
 A semi-official JavaScript client for [KGS Go Server](http://www.gokgs.com/).
 
+> **Note:** This repository is a fork of [jkk/shinkgs](https://github.com/jkk/shinkgs)
+> ("Go TV" fork). It is **not** the official Shin KGS client, it is **not**
+> operated by or affiliated with KGS Go Server, and it uses **no** KGS logos
+> or trademarks. See `LICENSE.txt` for the original MIT license (Justin Kramer).
+
 - The **official stable version** is available at https://shin.gokgs.com.
 - A development version (less stable) is available at https://shinkgs-master.now.sh.
 
@@ -44,6 +49,38 @@ Contributions welcome. Please check the [milestones](https://github.com/jkk/shin
 Issues with the ["difficulty-easy"](https://github.com/jkk/shinkgs/issues?q=is%3Aopen+is%3Aissue+label%3Adifficulty-easy) label are good tasks to get started on. Reach out if you need any guidance!
 
 Discord chat group for anyone interested in helping: https://discord.gg/vwzxdVr
+
+## Desktop-Installation (Linux, GNOME)
+
+The "Go TV" fork can be installed as a local desktop app: an icon in the app
+grid opens the login screen in its own window (no browser chrome).
+
+Prerequisites:
+
+- Node.js + Yarn V1 (see `AGENTS.md` "Setup")
+- Python 3 (standard library only), `curl`
+- A Chromium-family browser (chromium, google-chrome, brave or
+  microsoft-edge; native, Flatpak or Snap are all detected automatically)
+
+Install (no sudo, user-scoped only):
+
+```
+sh desktop/install.sh
+```
+
+Then launch "Go TV" from the app grid. The app serves the production build
+from `build-desktop/` on `127.0.0.1:8788` only; KGS traffic is proxied
+through the local server at `/json-cors/access` (KGS only allows a whitelist
+of CORS origins, so direct browser access from localhost is rejected).
+
+Uninstall:
+
+```
+sh desktop/uninstall.sh
+```
+
+Browser profile and server log live in `~/.local/share/gotv/` and are left
+in place by the uninstaller.
 
 ## Code Overview
 
