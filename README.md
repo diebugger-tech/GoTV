@@ -70,7 +70,7 @@ sh desktop/install.sh
 
 Then launch "Go TV" from the app grid. The app serves the production build
 from `build-desktop/` on `127.0.0.1:8788` only; KGS traffic is proxied
-through the local server at `/json-cors/access` (KGS only allows a whitelist
+through the local server at `/json/access` (KGS only allows a whitelist
 of CORS origins, so direct browser access from localhost is rejected).
 
 Uninstall:

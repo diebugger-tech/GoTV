@@ -4,13 +4,16 @@
 Serves the production build (build-desktop/) on 127.0.0.1 only, so the app
 can run in a browser window without any remote exposure.
 
-KGS access is proxied through /json-cors/access: KGS only answers CORS
-requests for a whitelist of origins (measured: Origin http://127.0.0.1:8788
-gets HTTP 403, Origin https://shin.gokgs.com gets allow-origin headers).
-So the desktop build is compiled with REACT_APP_API_URL=/json-cors/access
+KGS access is proxied through /json/access: the regular JSON endpoint for
+non-browser clients (measured: POST with Origin https://shin.gokgs.com ->
+200, Origin http://127.0.0.1:8788 -> HTTP 403; no Origin -> 200 + cookie).
+Even /json/access enforces the CORS origin whitelist, so the proxy keeps
+stripping the Origin header - forwarding it breaks the login (403).
+So the desktop build is compiled with REACT_APP_API_URL=/json/access
 and this server forwards POST/GET/OPTIONS to
-https://www.gokgs.com/json-cors/access, passing session cookies and keeping
-GET requests open for long-polling. Measurement + rationale: AGENTS.md.
+https://www.gokgs.com/json/access, passing session cookies (JSESSIONID,
+Path=/json matches the local /json/access) and keeping GET requests open
+for long-polling. Measurement + rationale: AGENTS.md.
 
 /igs-bridge is reserved for a future IGS source (TCP->WebSocket bridge) and
 deliberately returns 501. See AGENTS.md roadmap ("IgsTvSource - BLOCKIERT").
@@ -34,16 +37,17 @@ DEFAULT_PORT = 8788
 DEFAULT_BUILD_DIR = "build-desktop"
 
 KGS_UPSTREAM_HOST = "www.gokgs.com"
-KGS_UPSTREAM_PATH = "/json-cors/access"
-PROXY_PATH = "/json-cors/access"
+KGS_UPSTREAM_PATH = "/json/access"
+PROXY_PATH = "/json/access"
 
 # Long-polling: KGS keeps GET open until messages arrive. No read timeout.
 KGS_GET_TIMEOUT = None
 
 # Headers passed from the browser to KGS and back. Everything else is dropped
 # (host, content-length etc. are handled by the http library). The Origin
-# header is deliberately NOT forwarded: KGS whitelists CORS origins and would
-# reject 127.0.0.1 (measured: HTTP 403); server-side requests need no Origin.
+# header is deliberately NOT forwarded: even the regular /json/access endpoint
+# enforces the CORS origin whitelist and rejects 127.0.0.1 with HTTP 403
+# (measured); server-side requests need no Origin.
 REQUEST_HEADERS = {
     "accept",
     "accept-encoding",

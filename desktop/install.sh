@@ -28,9 +28,9 @@ else
   exit 1
 fi
 
-echo "1/4 Production-Build fuer den Desktop (REACT_APP_API_URL=/json-cors/access)..."
+echo "1/4 Production-Build fuer den Desktop (REACT_APP_API_URL=/json/access)..."
 cd "$ROOT_DIR" || exit 1
-REACT_APP_API_URL=/json-cors/access yarn build || exit 1
+REACT_APP_API_URL=/json/access yarn build || exit 1
 rm -rf build-desktop
 mv build build-desktop
 
