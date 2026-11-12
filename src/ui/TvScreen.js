@@ -8,11 +8,7 @@ import CalendarEventCard, {
 import StreamEmbed from "./tv/StreamEmbed";
 import SgfReplayView from "./tv/SgfReplayView";
 import { A, TabNav } from "./common";
-import {
-  getNextUpcomingEvent,
-  fetchTvEvents,
-  KGS_EVENTS_PAGE_URL,
-} from "../model/tv";
+import { getNextUpcomingEvent, fetchTvEvents } from "../model/tv";
 import { kgsTvSource } from "../model/TvSource";
 import type { TvEvent } from "../model/tv";
 import type { GameChannel, Room, Index, AppActions } from "../model";
@@ -129,18 +125,12 @@ export default class TvScreen extends Component<Props, State> {
                       Nächstes Event: <strong>{nextEvent.name}</strong> (
                       {formatEventDateRange(nextEvent)})
                     </div>
-                    <A button onClick={this._onShowCalendarTab}>
-                      Im Kalender ansehen
-                    </A>
                   </div>
                 ) : null}
-                <div className="TvScreen-live-empty-kgs">
-                  <a
-                    href={KGS_EVENTS_PAGE_URL}
-                    target="_blank"
-                    rel="noopener noreferrer">
-                    KGS-Eventseite öffnen
-                  </a>
+                <div className="TvScreen-live-empty-calendar">
+                  <A button onClick={this._onShowCalendarTab}>
+                    Zum Kalender
+                  </A>
                 </div>
               </div>
             )}

@@ -28,11 +28,6 @@ export function getLiveEventGames(
 // TV event calendar
 // ---------------------------------------------------------------------------
 
-// KGS' own schedule for official broadcasts (KGS Plus lectures and relayed
-// tournaments) - used as the "nothing live right now" fallback link, since
-// the old general tournament calendar (currentevents.html) was superseded.
-export const KGS_EVENTS_PAGE_URL = "https://www.gokgs.com/plusSchedule.jsp";
-
 export type TvPlatform = "youtube" | "twitch" | "other";
 
 export type TvEvent = {
