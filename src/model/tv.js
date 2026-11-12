@@ -3,32 +3,6 @@ import { startOfDay, endOfDay } from "date-fns";
 import { normalizeUrl } from "../util/urls";
 import type { GameChannel } from "./types";
 
-// Rank value of the weaker player in a game, or null if it can't be determined
-// (missing players or no rankVal). rankVal semantics (see parseRankVal in
-// model/user.js): kyu < 0, dan 1-9, pro >= 11, unranked -9999.
-export function getWeakerPlayerRankVal(game: GameChannel): ?number {
-  let { players } = game;
-  if (!players) {
-    return null;
-  }
-  let vals: Array<number> = [];
-  for (let role of ["black", "white"]) {
-    let user = players[(role: any)];
-    if (user && typeof user.rankVal === "number") {
-      vals.push(user.rankVal);
-    }
-  }
-  if (!vals.length) {
-    return null;
-  }
-  return Math.min(...vals);
-}
-
-// dan rank (1d or better) as numeric rankVal; pro ranks count as dan or better
-export function isDanRankVal(rankVal: number): boolean {
-  return rankVal >= 1;
-}
-
 // All games from the received game lists that are actually in progress:
 // not over and with both a black and a white player
 export function getLiveGames(games: Array<GameChannel>): Array<GameChannel> {
@@ -41,28 +15,23 @@ export function getLiveGames(games: Array<GameChannel>): Array<GameChannel> {
   });
 }
 
-// Sort live games by strength: the rank of the weaker player decides,
-// dan before kyu (pro before dan). Games with unknown strength go last.
-export function sortGamesByStrength(
+// TV -> Live is reserved for broadcasts, not "any strong game currently in
+// progress" (that's what Watch is for): KGS-flagged server events
+// (relayed tournament games, KGS Plus lectures) that are actually ongoing.
+export function getLiveEventGames(
   games: Array<GameChannel>
 ): Array<GameChannel> {
-  let sorted = [...games];
-  sorted.sort((a, b) => {
-    let ar = getWeakerPlayerRankVal(a);
-    let br = getWeakerPlayerRankVal(b);
-    let av = ar === null || ar === undefined ? -Infinity : ar;
-    let bv = br === null || br === undefined ? -Infinity : br;
-    if (av === bv) {
-      return (a.id || 0) - (b.id || 0);
-    }
-    return bv - av;
-  });
-  return sorted;
+  return getLiveGames(games).filter((game) => !!game.event);
 }
 
 // ---------------------------------------------------------------------------
 // TV event calendar
 // ---------------------------------------------------------------------------
+
+// KGS' own schedule for official broadcasts (KGS Plus lectures and relayed
+// tournaments) - used as the "nothing live right now" fallback link, since
+// the old general tournament calendar (currentevents.html) was superseded.
+export const KGS_EVENTS_PAGE_URL = "https://www.gokgs.com/plusSchedule.jsp";
 
 export type TvPlatform = "youtube" | "twitch" | "other";
 
@@ -143,6 +112,31 @@ export function validateTvEvent(value: Object): ?TvEvent {
     event.notes = value.notes;
   }
   return event;
+}
+
+// Loads and validates public/tv/events.json (or its future remote mirror).
+// Invalid entries are logged and skipped rather than failing the whole load.
+export function fetchTvEvents(): Promise<Array<TvEvent>> {
+  return fetch("tv/events.json")
+    .then((res) => {
+      if (!res.ok) {
+        throw new Error("HTTP " + res.status);
+      }
+      return res.json();
+    })
+    .then((data) => {
+      let rawEvents = data && Array.isArray(data.events) ? data.events : [];
+      let events: Array<TvEvent> = [];
+      for (let raw of rawEvents) {
+        let event = validateTvEvent(raw);
+        if (event) {
+          events.push(event);
+        } else {
+          console.log("[tv] Skipping invalid calendar entry:", raw);
+        }
+      }
+      return events;
+    });
 }
 
 // Extract a YouTube video id from a watch/share/embed/live/shorts URL.
@@ -267,6 +261,24 @@ export function groupEventsByTime(
     );
   }
   return groups;
+}
+
+// Calendar events that are live right now (the "today" bucket of
+// groupEventsByTime - events.json only carries dates, not times of day).
+export function getLiveEvents(
+  events: Array<TvEvent>,
+  now: Date
+): Array<TvEvent> {
+  return groupEventsByTime(events, now).today;
+}
+
+// The soonest event that hasn't started yet, or null. Used for the Live tab's
+// empty state ("Gerade keine Übertragung" + nächstes Event).
+export function getNextUpcomingEvent(
+  events: Array<TvEvent>,
+  now: Date
+): ?TvEvent {
+  return groupEventsByTime(events, now).upcoming[0] || null;
 }
 
 // ---------------------------------------------------------------------------

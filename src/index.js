@@ -75,8 +75,9 @@ if (
     komi: 6.5,
   };
 
-  // 5 live games with mixed ranks. Expected strength order (weaker player
-  // decides, dan/pro before kyu): 1p/9p, 5d/7d, 2d/4d, 1d/3k, 5k/7k.
+  // 5 "active" games; only the first is flagged as a KGS server event
+  // (game.event = true), so the TV Live tab's "Partien" section shows just
+  // that one - the rest are Watch-only material, not TV broadcasts.
   const DEV_FAKE_GAMES = [
     {
       id: 1,
@@ -84,6 +85,7 @@ if (
       roomId: null,
       type: "ranked",
       moveNum: 88,
+      event: true,
       rules: DEV_FAKE_RULES,
       players: {
         white: { name: "ProB", rank: "1p", rankVal: 11 },

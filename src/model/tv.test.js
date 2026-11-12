@@ -1,13 +1,13 @@
 import {
   getLiveGames,
-  sortGamesByStrength,
-  getWeakerPlayerRankVal,
-  isDanRankVal,
+  getLiveEventGames,
   validateTvEvent,
   getYouTubeVideoId,
   getTwitchChannel,
   getEmbedUrlForEvent,
   groupEventsByTime,
+  getLiveEvents,
+  getNextUpcomingEvent,
 } from "./tv";
 
 function makeUser(name, rankVal) {
@@ -23,28 +23,6 @@ function makeGame(id, black, white, over) {
   };
 }
 
-describe("getWeakerPlayerRankVal", () => {
-  it("returns the weaker player's rankVal", () => {
-    let game = makeGame(1, makeUser("strong", 13), makeUser("weak", -5));
-    expect(getWeakerPlayerRankVal(game)).toBe(-5);
-  });
-
-  it("handles missing players", () => {
-    expect(getWeakerPlayerRankVal(makeGame(1, null, makeUser("w", 3)))).toBe(3);
-    expect(getWeakerPlayerRankVal(makeGame(2, null, null))).toBe(null);
-  });
-});
-
-describe("isDanRankVal", () => {
-  it("treats dan and pro as dan, kyu and below as not", () => {
-    expect(isDanRankVal(1)).toBe(true);
-    expect(isDanRankVal(9)).toBe(true);
-    expect(isDanRankVal(11)).toBe(true);
-    expect(isDanRankVal(0)).toBe(false);
-    expect(isDanRankVal(-1)).toBe(false);
-  });
-});
-
 describe("getLiveGames", () => {
   it("keeps only in-progress games with both players", () => {
     let games = [
@@ -56,29 +34,17 @@ describe("getLiveGames", () => {
   });
 });
 
-describe("sortGamesByStrength", () => {
-  it("sorts dan before kyu, by weaker player's rank", () => {
+describe("getLiveEventGames", () => {
+  it("keeps only in-progress games flagged as KGS server events", () => {
     let games = [
-      makeGame(1, makeUser("a", 13), makeUser("b", 9)), // weaker 9d
-      makeGame(2, makeUser("c", 3), makeUser("d", -12)), // weaker 12k
-      makeGame(3, makeUser("e", 11), makeUser("f", 13)), // weaker 1p
-      makeGame(4, makeUser("g", 7), makeUser("h", 7)), // weaker 7d
+      {
+        ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
+        event: true,
+      },
+      makeGame(2, makeUser("a", 3), makeUser("b", 3), false), // not an event
+      { ...makeGame(3, makeUser("a", 3), makeUser("b", 3), true), event: true }, // over
     ];
-    expect(sortGamesByStrength(games).map((g) => g.id)).toEqual([3, 1, 4, 2]);
-  });
-
-  it("puts games with unknown strength last", () => {
-    let games = [
-      makeGame(1, makeUser("a", 1), makeUser("b", 1)),
-      makeGame(2, null, null),
-    ];
-    expect(sortGamesByStrength(games).map((g) => g.id)).toEqual([1, 2]);
-  });
-
-  it("does not mutate the input array", () => {
-    let games = [makeGame(1, makeUser("a", 1), makeUser("b", 1))];
-    sortGamesByStrength(games);
-    expect(games.length).toBe(1);
+    expect(getLiveEventGames(games).map((g) => g.id)).toEqual([1]);
   });
 });
 
@@ -232,5 +198,64 @@ describe("groupEventsByTime", () => {
     expect(groups.today.map((e) => e.id)).toEqual(["today"]);
     expect(groups.upcoming.map((e) => e.id)).toEqual(["upcoming"]);
     expect(groups.past.map((e) => e.id)).toEqual(["past"]);
+  });
+});
+
+describe("getLiveEvents", () => {
+  let events = [
+    validateTvEvent({
+      id: "today",
+      name: "Today",
+      date_start: "2026-06-15",
+      platform: "youtube",
+      stream_url: "https://www.youtube.com/@x",
+    }),
+    validateTvEvent({
+      id: "upcoming",
+      name: "Upcoming",
+      date_start: "2026-08-10",
+      platform: "youtube",
+      stream_url: "https://www.youtube.com/@x",
+    }),
+  ];
+
+  it("returns only events live right now", () => {
+    let now = new Date("2026-06-15T12:00:00");
+    expect(getLiveEvents(events, now).map((e) => e.id)).toEqual(["today"]);
+  });
+
+  it("returns an empty array when nothing is live", () => {
+    let now = new Date("2026-01-01T12:00:00");
+    expect(getLiveEvents(events, now)).toEqual([]);
+  });
+});
+
+describe("getNextUpcomingEvent", () => {
+  let events = [
+    validateTvEvent({
+      id: "soon",
+      name: "Soon",
+      date_start: "2026-08-10",
+      platform: "youtube",
+      stream_url: "https://www.youtube.com/@x",
+    }),
+    validateTvEvent({
+      id: "later",
+      name: "Later",
+      date_start: "2026-09-01",
+      platform: "youtube",
+      stream_url: "https://www.youtube.com/@x",
+    }),
+  ];
+
+  it("returns the soonest event that hasn't started yet", () => {
+    let now = new Date("2026-06-16T12:00:00");
+    let next = getNextUpcomingEvent(events, now);
+    expect(next && next.id).toBe("soon");
+  });
+
+  it("returns null when nothing is upcoming", () => {
+    let now = new Date("2027-01-01T12:00:00");
+    expect(getNextUpcomingEvent(events, now)).toBe(null);
   });
 });

@@ -12,9 +12,40 @@
     font-weight: bold;
   }
 
-  &-live-header {
-    padding: 10px;
-    border-bottom: 1px solid $very-muted;
+  &-live-content {
+    padding-bottom: 10px;
+  }
+
+  &-live-section {
+    &-title {
+      padding: 10px;
+      font-weight: bold;
+      border-bottom: 1px solid $very-muted;
+      background: $off-white;
+    }
+  }
+
+  &-live-empty {
+    padding: 30px 20px;
+    text-align: center;
+    color: $muted;
+
+    &-title {
+      font-size: 15px;
+      margin-bottom: 14px;
+    }
+
+    &-next {
+      margin-bottom: 18px;
+
+      &-text {
+        margin-bottom: 8px;
+      }
+    }
+
+    &-kgs a {
+      color: $link-color;
+    }
   }
 
   &-stream {
