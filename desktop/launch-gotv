@@ -1,0 +1,127 @@
+# launch-gotv - Startet die Go TV Desktop-App.
+# Kein Shebang und kein Ausrufezeichen im Skript (Regel: zsh History Expansion).
+# Wird von sh/zsh ueber den ENOEXEC-Fallback bzw. ueber /bin/sh ausgefuehrt.
+
+set -u
+
+GOTV_PORT="${GOTV_PORT:-8788}"
+BASE_URL="http://127.0.0.1:${GOTV_PORT}"
+HOME_DIR="$HOME"
+DATA_DIR="${HOME_DIR}/.local/share/gotv"
+
+# Wurzelverzeichnis des Repos: env GOTV_ROOT > installierte Marker-Datei >
+# relativ zum Skript (desktop/launch-gotv im Repo).
+ROOT_DIR="${GOTV_ROOT:-}"
+if [ -z "$ROOT_DIR" ]; then
+  if [ -r "${HOME_DIR}/.config/gotv/root-path" ]; then
+    ROOT_DIR=$(cat "${HOME_DIR}/.config/gotv/root-path")
+  else
+    ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
+  fi
+fi
+
+mkdir -p "$DATA_DIR"
+
+detect_browser() {
+  for bin in chromium chromium-browser; do
+    if command -v "$bin" > /dev/null 2>&1; then
+      echo "$bin"
+      return 0
+    fi
+  done
+  if flatpak list --app 2> /dev/null | grep -q "org.chromium.Chromium"; then
+    echo "flatpak run org.chromium.Chromium"
+    return 0
+  fi
+  if snap list chromium 2> /dev/null | grep -q "^chromium "; then
+    echo "snap run chromium"
+    return 0
+  fi
+  for bin in google-chrome google-chrome-stable; do
+    if command -v "$bin" > /dev/null 2>&1; then
+      echo "$bin"
+      return 0
+    fi
+  done
+  if flatpak list --app 2> /dev/null | grep -q "com.google.Chrome"; then
+    echo "flatpak run com.google.Chrome"
+    return 0
+  fi
+  for bin in brave brave-browser; do
+    if command -v "$bin" > /dev/null 2>&1; then
+      echo "$bin"
+      return 0
+    fi
+  done
+  if flatpak list --app 2> /dev/null | grep -q "com.brave.Browser"; then
+    echo "flatpak run com.brave.Browser"
+    return 0
+  fi
+  if snap list brave 2> /dev/null | grep -q "^brave "; then
+    echo "snap run brave"
+    return 0
+  fi
+  for bin in microsoft-edge microsoft-edge-stable; do
+    if command -v "$bin" > /dev/null 2>&1; then
+      echo "$bin"
+      return 0
+    fi
+  done
+  if flatpak list --app 2> /dev/null | grep -q "com.microsoft.Edge"; then
+    echo "flatpak run com.microsoft.Edge"
+    return 0
+  fi
+  echo ""
+  return 1
+}
+
+server_running() {
+  curl -sf "$BASE_URL/" > /dev/null 2>&1
+}
+
+# Server starten, falls er noch nicht laeuft.
+if server_running; then
+  :
+else
+  nohup python3 "$ROOT_DIR/desktop/goTV_local.py" \
+    --build "$ROOT_DIR/build-desktop" \
+    --port "$GOTV_PORT" \
+    >> "$DATA_DIR/server.log" 2>&1 &
+  i=0
+  while [ "$i" -lt 30 ]; do
+    if server_running; then
+      break
+    fi
+    sleep 0.5
+    i=$((i + 1))
+  done
+  if server_running; then
+    :
+  else
+    echo "Go TV Server startet nicht."
+    echo "Log: $DATA_DIR/server.log"
+    exit 1
+  fi
+fi
+
+# Browser suchen: Chromium-Familie, nativ / Flatpak / Snap.
+BROWSER_CMD="${GOTV_BROWSER:-}"
+if [ -z "$BROWSER_CMD" ]; then
+  BROWSER_CMD=$(detect_browser)
+fi
+if [ -z "$BROWSER_CMD" ]; then
+  echo "Kein Chromium-Browser gefunden"
+  echo "(chromium, google-chrome, brave, microsoft-edge; jeweils nativ,"
+  echo " Flatpak oder Snap)."
+  echo "Optionen: Chromium per Home Manager installieren, Firefox mit eigenem"
+  echo "Profil, oder pywebview (GTK/WebKit) mit Embed-Pruefung."
+  echo "Alternativ: GOTV_BROWSER='BEFEHL' setzen und erneut starten."
+  exit 1
+fi
+
+BROWSER_ARGS="--app=$BASE_URL --user-data-dir=$DATA_DIR/profile --class=gotv --no-first-run --no-default-browser-check"
+
+# Wortweise expandieren (fuer 'flatpak run <app>' etc.)
+$BROWSER_CMD $BROWSER_ARGS &
+
+exit 0
