@@ -1,5 +1,12 @@
 # Change Log
 
+## Unreleased (Go TV fork)
+
+### Phase 0 — Lauffähig auf Node 24
+- yarn via corepack: `packageManager: yarn@1.22.22`, Shim `~/.local/bin/yarn`
+- node-sass 4.14.1 → `sass` (dart-sass) 1.77.8; SCSS kompiliert unverändert
+- `NODE_OPTIONS=--openssl-legacy-provider` in start/build-Scripts (webpack 4, md4 auf OpenSSL 3)
+
 ## v0.3.0
 - Challenge creation
 - Challenge negotation (by challenger only for now)

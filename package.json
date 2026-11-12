@@ -1,6 +1,7 @@
 {
   "name": "shinkgs",
   "version": "0.4.0-dev",
+  "packageManager": "yarn@1.22.22",
   "devDependencies": {
     "babel-eslint": "^10.1.0",
     "cross-env": "^7.0.2",
@@ -9,7 +10,6 @@
     "eslint-plugin-prettier": "^3.1.4",
     "eslint-plugin-react": "^7.11.1",
     "flow-bin": "^0.129.0",
-    "node-sass": "4.14.1",
     "prettier": "^2.0.5",
     "react-scripts": "3.4.1",
     "serve": "^11.3.2"
@@ -32,13 +32,14 @@
     "react": "^16.5.0",
     "react-chartist": "^0.14.3",
     "react-dom": "^16.5.0",
+    "sass": "1.77.8",
     "uuid": "^8.2.0"
   },
   "scripts": {
-    "start": "cross-env REACT_APP_API_URL=\"/json-cors/access\"  react-scripts start",
-    "start:beta": "cross-env REACT_APP_API_URL=\"https://beta.gokgs.com/json-cors/access\" HTTPS=true react-scripts start",
+    "start": "cross-env REACT_APP_API_URL=\"/json-cors/access\" NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
+    "start:beta": "cross-env REACT_APP_API_URL=\"https://beta.gokgs.com/json-cors/access\" HTTPS=true NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
     "start:server": "serve ./build --single",
-    "build": "react-scripts build",
+    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "eject": "react-scripts eject",
     "test": "react-scripts test --env=jsdom",
     "lint": "eslint src/",
