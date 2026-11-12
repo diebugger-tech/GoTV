@@ -291,7 +291,7 @@ def main(argv=None):
     if not os.path.isfile(os.path.join(build_dir, "index.html")):
         sys.stderr.write(
             "No build found in %s. Run install.sh first "
-            "(it builds with REACT_APP_API_URL=.../json-cors/access).\n" % build_dir
+            "(it builds with REACT_APP_API_URL=.../json/access).\n" % build_dir
         )
         return 1
 
