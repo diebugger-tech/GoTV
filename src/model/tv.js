@@ -45,6 +45,7 @@ export type TvEvent = {
   video_id?: string,
   sgf_url?: string,
   notes?: string,
+  channel?: { platform: "youtube" | "twitch", id: string },
 };
 
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{6,}$/;
@@ -92,6 +93,19 @@ export function validateTvEvent(value: Object): ?TvEvent {
       return null;
     }
   }
+  let channel;
+  if (value.channel !== undefined && value.channel !== null) {
+    if (
+      typeof value.channel !== "object" ||
+      (value.channel.platform !== "youtube" &&
+        value.channel.platform !== "twitch") ||
+      typeof value.channel.id !== "string" ||
+      !value.channel.id
+    ) {
+      return null;
+    }
+    channel = { platform: value.channel.platform, id: value.channel.id };
+  }
   let event: TvEvent = {
     id: value.id,
     name: value.name,
@@ -110,6 +124,9 @@ export function validateTvEvent(value: Object): ?TvEvent {
   }
   if (value.notes) {
     event.notes = value.notes;
+  }
+  if (channel) {
+    event.channel = channel;
   }
   return event;
 }
@@ -236,22 +253,45 @@ export function getTwitchChannel(url: string): ?string {
   return name;
 }
 
+// Whether event is "live" right now: now falls within [start of
+// date_start, end of date_end (or date_start) if no date_end].
+function isEventLiveToday(event: TvEvent, now: Date): boolean {
+  let start = new Date(event.date_start);
+  let end = event.date_end ? new Date(event.date_end) : start;
+  let nowTime = now.getTime();
+  return (
+    nowTime >= startOfDay(start).getTime() && nowTime <= endOfDay(end).getTime()
+  );
+}
+
 // Official embed URL for an event, or null if embedding is not possible
 // (then the UI must only offer "Extern öffnen"). hostname is used for the
-// Twitch parent parameter.
+// Twitch parent parameter. A specific video_id always wins; failing that,
+// while the event is live (today) its channel field (if set) embeds
+// whatever that channel is currently streaming - last, falling back to
+// whatever can be parsed out of stream_url itself.
 export function getEmbedUrlForEvent(
   event: TvEvent,
-  hostname?: string
+  hostname?: string,
+  now?: Date
 ): ?string {
+  let host = hostname || "localhost";
+  let live = isEventLiveToday(event, now || new Date());
+
   if (event.platform === "youtube") {
     let id = event.video_id || getYouTubeVideoId(event.stream_url);
     if (id) {
       return "https://www.youtube-nocookie.com/embed/" + id;
     }
+    if (live && event.channel && event.channel.platform === "youtube") {
+      return (
+        "https://www.youtube-nocookie.com/embed/live_stream?channel=" +
+        event.channel.id
+      );
+    }
     return null;
   }
   if (event.platform === "twitch") {
-    let host = hostname || "localhost";
     if (event.video_id) {
       return (
         "https://player.twitch.tv/?video=" + event.video_id + "&parent=" + host
@@ -260,6 +300,14 @@ export function getEmbedUrlForEvent(
     let channel = getTwitchChannel(event.stream_url);
     if (channel) {
       return "https://player.twitch.tv/?channel=" + channel + "&parent=" + host;
+    }
+    if (live && event.channel && event.channel.platform === "twitch") {
+      return (
+        "https://player.twitch.tv/?channel=" +
+        event.channel.id +
+        "&parent=" +
+        host
+      );
     }
     return null;
   }
@@ -281,11 +329,7 @@ export function groupEventsByTime(
   let nowTime = now.getTime();
   for (let event of events) {
     let start = new Date(event.date_start);
-    let end = event.date_end ? new Date(event.date_end) : start;
-    if (
-      nowTime >= startOfDay(start).getTime() &&
-      nowTime <= endOfDay(end).getTime()
-    ) {
+    if (isEventLiveToday(event, now)) {
       groups.today.push(event);
     } else if (nowTime < startOfDay(start).getTime()) {
       groups.upcoming.push(event);

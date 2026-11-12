@@ -65,6 +65,19 @@ describe("validateTvEvent", () => {
     expect(event.id).toBe("ev1");
   });
 
+  it("accepts a valid channel field", () => {
+    let event = validateTvEvent({
+      id: "ev1",
+      name: "Test Event",
+      date_start: "2026-06-15",
+      platform: "youtube",
+      stream_url: "https://www.youtube.com/@channel",
+      channel: { platform: "youtube", id: "UCabc123" },
+    });
+    expect(event).not.toBe(null);
+    expect(event.channel).toEqual({ platform: "youtube", id: "UCabc123" });
+  });
+
   it("rejects entries with invalid fields", () => {
     expect(validateTvEvent(null)).toBe(null);
     expect(validateTvEvent({ id: "x" })).toBe(null);
@@ -84,6 +97,29 @@ describe("validateTvEvent", () => {
         date_start: "2026-01-01",
         platform: "vimeo",
         stream_url: "https://x",
+      })
+    ).toBe(null);
+  });
+
+  it("rejects an invalid channel field", () => {
+    expect(
+      validateTvEvent({
+        id: "x",
+        name: "X",
+        date_start: "2026-01-01",
+        platform: "youtube",
+        stream_url: "https://x",
+        channel: { platform: "vimeo", id: "abc" },
+      })
+    ).toBe(null);
+    expect(
+      validateTvEvent({
+        id: "x",
+        name: "X",
+        date_start: "2026-01-01",
+        platform: "youtube",
+        stream_url: "https://x",
+        channel: { platform: "youtube" },
       })
     ).toBe(null);
   });
@@ -167,6 +203,75 @@ describe("getEmbedUrlForEvent", () => {
     expect(channelUrl).toBe(
       "https://player.twitch.tv/?channel=somechannel&parent=example.com"
     );
+  });
+
+  it("embeds a youtube channel's live stream while the event is live", () => {
+    let url = getEmbedUrlForEvent(
+      {
+        id: "e",
+        name: "E",
+        date_start: "2026-06-15",
+        platform: "youtube",
+        stream_url: "https://www.youtube.com/@SomeChannel",
+        channel: { platform: "youtube", id: "UCabc123" },
+      },
+      "localhost",
+      new Date("2026-06-15T12:00:00")
+    );
+    expect(url).toBe(
+      "https://www.youtube-nocookie.com/embed/live_stream?channel=UCabc123"
+    );
+  });
+
+  it("embeds a twitch channel live while the event is live, with no video_id and an unparseable stream_url", () => {
+    let url = getEmbedUrlForEvent(
+      {
+        id: "e",
+        name: "E",
+        date_start: "2026-06-15",
+        platform: "twitch",
+        stream_url: "https://example.com/schedule",
+        channel: { platform: "twitch", id: "somechannel" },
+      },
+      "example.com",
+      new Date("2026-06-15T12:00:00")
+    );
+    expect(url).toBe(
+      "https://player.twitch.tv/?channel=somechannel&parent=example.com"
+    );
+  });
+
+  it("ignores the channel field when the event is not live", () => {
+    let url = getEmbedUrlForEvent(
+      {
+        id: "e",
+        name: "E",
+        date_start: "2026-06-15",
+        platform: "youtube",
+        stream_url: "https://www.youtube.com/@SomeChannel",
+        channel: { platform: "youtube", id: "UCabc123" },
+      },
+      "localhost",
+      new Date("2026-07-01T12:00:00")
+    );
+    expect(url).toBe(null);
+  });
+
+  it("prefers video_id over the channel field even while live", () => {
+    let url = getEmbedUrlForEvent(
+      {
+        id: "e",
+        name: "E",
+        date_start: "2026-06-15",
+        platform: "youtube",
+        stream_url: "https://www.youtube.com/@SomeChannel",
+        video_id: "specificVideo1",
+        channel: { platform: "youtube", id: "UCabc123" },
+      },
+      "localhost",
+      new Date("2026-06-15T12:00:00")
+    );
+    expect(url).toBe("https://www.youtube-nocookie.com/embed/specificVideo1");
   });
 });
 
