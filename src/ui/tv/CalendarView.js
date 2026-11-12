@@ -7,6 +7,9 @@ import { validateTvEvent, groupEventsByTime } from "../../model/tv";
 import type { TvEvent } from "../../model/tv";
 
 type Props = {
+  // When provided, these events are used instead of fetching events.json
+  // (dev harness / tests). Entries are validated the same way as fetched ones.
+  events?: ?Array<TvEvent>,
   onOpenReplay?: (string) => any,
 };
 
@@ -88,8 +91,25 @@ export default class CalendarView extends Component<Props, State> {
   };
 
   componentDidMount() {
-    this._loadEvents();
+    if (this.props.events) {
+      this._applyEvents(this.props.events);
+    } else {
+      this._loadEvents();
+    }
   }
+
+  _applyEvents = (rawEvents: Array<TvEvent>) => {
+    let events: Array<TvEvent> = [];
+    for (let raw of rawEvents) {
+      let event = validateTvEvent(raw);
+      if (event) {
+        events.push(event);
+      } else {
+        console.log("[tv] Skipping invalid calendar entry:", raw);
+      }
+    }
+    this.setState({ status: "ready", events });
+  };
 
   _loadEvents = () => {
     this.setState({ status: "loading", events: [] });

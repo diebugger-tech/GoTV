@@ -58,6 +58,7 @@ cd ~/Projekte/aktiv/shinkgs && yarn install
 | `yarn lint` | eslint src/ |
 | `yarn flow` | flow check |
 | `yarn test` | react-scripts test --env=jsdom |
+| `http://localhost:3100/#tv-dev` | Dev-Harness: kompletter TV-Flow ohne KGS-Login (nur Development) |
 
 Gate nach jedem Schritt: `yarn lint && yarn flow && yarn build`
 
@@ -81,6 +82,13 @@ Gate nach jedem Schritt: `yarn lint && yarn flow && yarn build`
 - Nav-Punkt "tv": types.js (NavOption) + index.js (isValidNav) + meta/Nav.js + Main.js.
 - Stream-Öffnen aus dem Chat: dispatch `TV_OPEN_STREAM` {url} → nav "tv" → TvScreen zeigt
   Zwei-Klick-Platzhalter; Embed-Builder in `src/ui/tv/StreamEmbed.js`.
+- Dev-Harness: `src/index.js` enthält einen NODE_ENV-gegateten Block (`#tv-dev`), der den
+  TV-Tab mit simulierten Daten rendert (5 Fake-Partien, synthetische Kalender-Events,
+  Chat-Messages mit Stream-Links, Replay). Er wird im Production-Build von terser
+  weggefaltet — nach jedem Build prüfen:
+  `grep -rl "GO-TV-DEV-HARNESS" build/` darf nichts finden. Deshalb auch
+  `GENERATE_SOURCEMAP=false` im build-Script (sonst stünde der Quelltext in den .map-Dateien).
+  `public/tv/demo.sgf` ist die Demo-Fixture für den Harness und `sgf_url`.
 
 ## Roadmap
 
@@ -149,6 +157,8 @@ Gate nach jedem Schritt: `yarn lint && yarn flow && yarn build`
 - Dev-Server ohne TTY beendet sich nach dem Banner still (start.js: stdin-Ende) →
   Hintergrundstart nur mit `CI=true`.
 - Port 3000 ist auf diesem Rechner dauerhaft fremdbelegt → Dev-Server mit `PORT=3100`.
+- Production-Build ohne Sourcemaps (`GENERATE_SOURCEMAP=false`) — nötig, damit der
+  Dev-Harness-Quelltext nicht über sourcesContent im Build landet.
 
 ## Offene Roadmap (Phase 6, nur dokumentiert)
 

@@ -39,7 +39,7 @@
     "start": "cross-env REACT_APP_API_URL=\"/json-cors/access\" NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
     "start:beta": "cross-env REACT_APP_API_URL=\"https://beta.gokgs.com/json-cors/access\" HTTPS=true NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
     "start:server": "serve ./build --single",
-    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
+    "build": "cross-env NODE_OPTIONS=--openssl-legacy-provider GENERATE_SOURCEMAP=false react-scripts build",
     "eject": "react-scripts eject",
     "test": "react-scripts test --env=jsdom",
     "lint": "eslint src/",
