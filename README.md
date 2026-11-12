@@ -82,6 +82,50 @@ sh desktop/uninstall.sh
 Browser profile and server log live in `~/.local/share/gotv/` and are left
 in place by the uninstaller.
 
+## Events eintragen
+
+The Go TV calendar (`public/tv/events.json`) is loaded from
+[`diebugger-tech/shinkgs`](https://github.com/diebugger-tech/shinkgs) on
+GitHub first, falling back to the bundled local copy when offline or
+unreachable (`fetchTvEvents()` in `src/model/tv.js`, cached for an hour).
+To add or update an event, edit `public/tv/events.json` in this repo and
+open a pull request.
+
+Each entry:
+
+| Field | Required | Description |
+|---|---|---|
+| `id` | yes | Stable, unique string (used as the React key). |
+| `name` | yes | Event name shown in the calendar. |
+| `date_start` | yes | `YYYY-MM-DD`. The event is "live" from the start of this day. |
+| `date_end` | no | `YYYY-MM-DD`. Defaults to `date_start` for single-day events. |
+| `platform` | yes | `"youtube"`, `"twitch"`, or `"other"` (link only, no embed). |
+| `stream_url` | yes | Channel or video page; used for "Extern öffnen" and as a fallback embed source. |
+| `video_id` | no | A specific YouTube or Twitch video id - embeds that exact recording and wins over everything else. |
+| `channel` | no | `{"platform": "youtube"\|"twitch", "id": "..."}`. Used only while the event is live (today) and no `video_id` is set, to embed whatever that channel is currently streaming. YouTube needs the channel *id* (`UC...`), not the `@handle`; Twitch takes the channel login. |
+| `sgf_url` | no | Link to a recorded SGF. Shows a "SGF nachspielen" shortcut and keeps the event from disappearing after 14 days (see below). |
+| `notes` | no | Short free-text shown under the name. |
+
+Example entry for a tournament broadcast on a known channel, embedding
+whatever that channel streams while the event is live:
+
+```json
+{
+  "id": "example-cup-2027",
+  "name": "Example Cup 2027",
+  "date_start": "2027-03-01",
+  "date_end": "2027-03-03",
+  "platform": "youtube",
+  "stream_url": "https://www.youtube.com/@ExampleGoChannel",
+  "channel": { "platform": "youtube", "id": "UCxxxxxxxxxxxxxxxxxxxxxx" },
+  "notes": "Example only - replace with a real, confirmed broadcast."
+}
+```
+
+Past events are shown for 14 days after they end, then dropped from the
+calendar - unless they have a `video_id` or `sgf_url`, in which case they
+move to an "Archiv" section instead of disappearing.
+
 ## Code Overview
 
 This project uses JavaScript, React, and ES6+ with [Flow](https://flow.org/) types. [VS Code](https://code.visualstudio.com/) (with eslint and flow extensions added) is a great editor for this setup.
