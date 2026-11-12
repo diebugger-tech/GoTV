@@ -114,10 +114,19 @@ export function validateTvEvent(value: Object): ?TvEvent {
   return event;
 }
 
-// Loads and validates public/tv/events.json (or its future remote mirror).
-// Invalid entries are logged and skipped rather than failing the whole load.
-export function fetchTvEvents(): Promise<Array<TvEvent>> {
-  return fetch("tv/events.json")
+// The community-editable calendar: anyone can open a pull request against
+// this file without a client release. raw.githubusercontent.com always
+// sends Access-Control-Allow-Origin: *, so this is fetchable directly from
+// the browser - no proxy needed.
+export const REMOTE_EVENTS_URL =
+  "https://raw.githubusercontent.com/diebugger-tech/shinkgs/master/public/tv/events.json";
+const LOCAL_EVENTS_URL = "tv/events.json";
+const EVENTS_CACHE_MS = 60 * 60 * 1000; // 1 hour
+
+let _eventsCache: ?{ events: Array<TvEvent>, fetchedAt: number } = null;
+
+function fetchAndValidateEvents(url: string): Promise<Array<TvEvent>> {
+  return fetch(url)
     .then((res) => {
       if (!res.ok) {
         throw new Error("HTTP " + res.status);
@@ -137,6 +146,36 @@ export function fetchTvEvents(): Promise<Array<TvEvent>> {
       }
       return events;
     });
+}
+
+// Loads and validates the Go TV calendar: the remote copy on GitHub first
+// (see REMOTE_EVENTS_URL), falling back to the bundled public/tv/events.json
+// when offline or the remote fetch fails for any reason (network error,
+// non-2xx, bad JSON, no valid entries after validation still counts as a
+// successful - if empty - result, not a failure). Same validation either
+// way. Successful results are cached in memory for an hour.
+export function fetchTvEvents(): Promise<Array<TvEvent>> {
+  if (_eventsCache && Date.now() - _eventsCache.fetchedAt < EVENTS_CACHE_MS) {
+    return Promise.resolve(_eventsCache.events);
+  }
+  return fetchAndValidateEvents(REMOTE_EVENTS_URL)
+    .catch((err) => {
+      console.log(
+        "[tv] Remote events.json unavailable, falling back to local copy:",
+        err
+      );
+      return fetchAndValidateEvents(LOCAL_EVENTS_URL);
+    })
+    .then((events) => {
+      _eventsCache = { events, fetchedAt: Date.now() };
+      return events;
+    });
+}
+
+// Test-only: the module-level cache above would otherwise leak between
+// tests (and between e.g. repeated dev-harness reloads in the same tab).
+export function _resetTvEventsCache() {
+  _eventsCache = null;
 }
 
 // Extract a YouTube video id from a watch/share/embed/live/shorts URL.

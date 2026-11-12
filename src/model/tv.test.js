@@ -9,6 +9,9 @@ import {
   groupEventsByTime,
   getLiveEvents,
   getNextUpcomingEvent,
+  fetchTvEvents,
+  _resetTvEventsCache,
+  REMOTE_EVENTS_URL,
 } from "./tv";
 
 function makeUser(name, rankVal) {
@@ -335,5 +338,99 @@ describe("getLiveEventForGame", () => {
     };
     let events = [liveToday("first", "Cup A"), liveToday("second", "Cup B")];
     expect(getLiveEventForGame(game, events, {}, now).id).toBe("first");
+  });
+});
+
+describe("fetchTvEvents", () => {
+  let originalFetch;
+
+  function okResponse(body) {
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(body),
+    });
+  }
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+    _resetTvEventsCache();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.restoreAllMocks();
+  });
+
+  it("uses the remote events.json when it is reachable", async () => {
+    let remoteBody = {
+      events: [
+        {
+          id: "remote",
+          name: "Remote",
+          date_start: "2026-01-01",
+          platform: "youtube",
+          stream_url: "https://www.youtube.com/@x",
+        },
+      ],
+    };
+    global.fetch = jest.fn(() => okResponse(remoteBody));
+    let events = await fetchTvEvents();
+    expect(events.map((e) => e.id)).toEqual(["remote"]);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch.mock.calls[0][0]).toBe(REMOTE_EVENTS_URL);
+  });
+
+  it("falls back to the local copy when the remote fetch fails", async () => {
+    let localBody = {
+      events: [
+        {
+          id: "local",
+          name: "Local",
+          date_start: "2026-01-01",
+          platform: "youtube",
+          stream_url: "https://www.youtube.com/@x",
+        },
+      ],
+    };
+    global.fetch = jest.fn((url) => {
+      if (url === REMOTE_EVENTS_URL) {
+        return Promise.reject(new Error("network error"));
+      }
+      return okResponse(localBody);
+    });
+    let events = await fetchTvEvents();
+    expect(events.map((e) => e.id)).toEqual(["local"]);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("falls back to the local copy on a non-2xx remote response", async () => {
+    let localBody = { events: [] };
+    global.fetch = jest.fn((url) => {
+      if (url === REMOTE_EVENTS_URL) {
+        return Promise.resolve({ ok: false, status: 404 });
+      }
+      return okResponse(localBody);
+    });
+    let events = await fetchTvEvents();
+    expect(events).toEqual([]);
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("caches a successful result for an hour", async () => {
+    global.fetch = jest.fn(() => okResponse({ events: [] }));
+    await fetchTvEvents();
+    await fetchTvEvents();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("refetches once the cache expires", async () => {
+    global.fetch = jest.fn(() => okResponse({ events: [] }));
+    let nowSpy = jest.spyOn(Date, "now");
+    nowSpy.mockReturnValue(1000000);
+    await fetchTvEvents();
+    nowSpy.mockReturnValue(1000000 + 61 * 60 * 1000);
+    await fetchTvEvents();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });

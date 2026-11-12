@@ -21,7 +21,11 @@
     "test": true,
     "describe": true,
     "beforeAll": true,
-    "expect": true
+    "beforeEach": true,
+    "afterAll": true,
+    "afterEach": true,
+    "expect": true,
+    "jest": true
   },
   "extends": [
     "plugin:flowtype/recommended",
