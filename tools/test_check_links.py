@@ -124,6 +124,45 @@ class FindUrlsInEventsTest(unittest.TestCase):
             check_links.find_urls_in_events(Path("/nonexistent/events.json")), {}
         )
 
+    def test_finds_urls_in_channels_too(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            events_path = Path(tmp) / "events.json"
+            events_path.write_text(
+                json.dumps(
+                    {
+                        "events": [],
+                        "channels": [
+                            {
+                                "id": "baduk-tv",
+                                "url": "https://www.youtube.com/@BadukTV",
+                            },
+                            {
+                                "id": "egf-twitch",
+                                "url": "https://www.twitch.tv/europeangofederation",
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            found = check_links.find_urls_in_events(events_path)
+            self.assertEqual(
+                found["https://www.youtube.com/@BadukTV"], {"baduk-tv"}
+            )
+            self.assertEqual(
+                found["https://www.twitch.tv/europeangofederation"],
+                {"egf-twitch"},
+            )
+
+    def test_missing_channels_field_is_not_an_error(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            events_path = Path(tmp) / "events.json"
+            events_path.write_text(
+                json.dumps({"events": []}), encoding="utf-8"
+            )
+            # No "channels" key at all (old-schema file) - must not raise.
+            self.assertEqual(check_links.find_urls_in_events(events_path), {})
+
 
 class FindUrlsInUiDirTest(unittest.TestCase):
     def test_finds_literal_urls_in_js_files(self):

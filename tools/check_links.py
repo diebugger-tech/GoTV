@@ -35,10 +35,20 @@ USER_AGENT = "shinkgs-go-tv-link-checker/1.0 (+https://github.com/diebugger-tech
 
 
 def find_urls_in_events(events_file):
-    """Every string value that looks like a URL, anywhere in an event
-    object - generic on purpose, so a new URL-bearing field (channel,
-    sgf_url, a future one, ...) doesn't need a code change here to be
-    checked. Maps each URL to the event id(s) that reference it."""
+    """Every string value that looks like a URL, anywhere in an event or
+    channel object - generic on purpose, so a new URL-bearing field
+    (channel, sgf_url, a future one, ...) doesn't need a code change
+    here to be checked. Maps each URL to the event/channel id(s) that
+    reference it.
+
+    channels[].url is included here too, same walk, same file. Caveat
+    for Twitch specifically: a twitch.tv/<name> URL for a name that was
+    never registered still answers 200 - Twitch's site is a SPA and
+    does the "does this channel exist" check client-side, not via HTTP
+    status, so a clean 200 here is NOT proof the channel exists.
+    YouTube channel URLs don't have this problem: a genuinely
+    unregistered @handle 404s like any other missing YouTube page.
+    """
     events_file = Path(events_file)
     if not events_file.exists():
         return {}
@@ -46,19 +56,21 @@ def find_urls_in_events(events_file):
         data = json.load(f)
     found = {}
 
-    def walk(value, event_id):
+    def walk(value, item_id):
         if isinstance(value, str):
             for m in URL_RE.finditer(value):
-                found.setdefault(m.group(0), set()).add(event_id)
+                found.setdefault(m.group(0), set()).add(item_id)
         elif isinstance(value, dict):
             for v in value.values():
-                walk(v, event_id)
+                walk(v, item_id)
         elif isinstance(value, list):
             for v in value:
-                walk(v, event_id)
+                walk(v, item_id)
 
     for event in data.get("events", []):
         walk(event, event.get("id", "?"))
+    for channel in data.get("channels", []):
+        walk(channel, channel.get("id", "?"))
     return found
 
 
