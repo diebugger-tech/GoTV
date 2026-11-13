@@ -54,9 +54,16 @@ export type TvEvent = {
   // the KGS room the games are relayed in and/or the players' KGS names.
   kgs_room?: string,
   kgs_players?: Array<string>,
+  // With "start": how long the broadcast runs (default LIVE_DEFAULT_MINUTES).
+  duration_minutes?: number,
 };
 
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{6,}$/;
+
+// Live window for events with a precise start time (see getLiveWindow).
+const LIVE_LEAD_MS = 15 * 60 * 1000; // pre-show: count as live 15 min early
+const LIVE_DEFAULT_MINUTES = 240; // a round incl. commentary, if not given
+const MAX_DURATION_MINUTES = 48 * 60;
 
 function isStringList(value: mixed): boolean {
   return (
@@ -150,6 +157,15 @@ export function validateTvEvent(value: Object): ?TvEvent {
   ) {
     return null;
   }
+  if (
+    value.duration_minutes !== undefined &&
+    value.duration_minutes !== null &&
+    (typeof value.duration_minutes !== "number" ||
+      !(value.duration_minutes > 0) ||
+      value.duration_minutes > MAX_DURATION_MINUTES)
+  ) {
+    return null;
+  }
   let event: TvEvent = {
     id: value.id,
     name: value.name,
@@ -186,6 +202,9 @@ export function validateTvEvent(value: Object): ?TvEvent {
   }
   if (value.kgs_players && value.kgs_players.length) {
     event.kgs_players = value.kgs_players.map((name) => name.trim());
+  }
+  if (value.duration_minutes) {
+    event.duration_minutes = value.duration_minutes;
   }
   return event;
 }
@@ -413,15 +432,30 @@ export function getTwitchChannel(url: string): ?string {
   return name;
 }
 
-// Whether event is "live" right now: now falls within [start of
-// date_start, end of date_end (or date_start) if no date_end].
-function isEventLiveToday(event: TvEvent, now: Date): boolean {
-  let start = new Date(event.date_start);
-  let end = event.date_end ? new Date(event.date_end) : start;
+// When an event counts as live. With a precise "start" on a single day:
+// from 15 min before start until start + duration_minutes (default 4 h) -
+// a 19:00 broadcast is not "live" all morning. Date-only events and
+// multi-day events (no per-day times in events.json) stay whole days.
+export function getLiveWindow(event: TvEvent): { start: Date, end: Date } {
+  let dayStart = new Date(event.date_start);
+  let dayEnd = event.date_end ? new Date(event.date_end) : dayStart;
+  let singleDay =
+    startOfDay(dayEnd).getTime() === startOfDay(dayStart).getTime();
+  if (event.start && singleDay) {
+    let start = new Date(event.start).getTime();
+    let minutes = event.duration_minutes || LIVE_DEFAULT_MINUTES;
+    return {
+      start: new Date(start - LIVE_LEAD_MS),
+      end: new Date(start + minutes * 60 * 1000),
+    };
+  }
+  return { start: startOfDay(dayStart), end: endOfDay(dayEnd) };
+}
+
+function isEventLiveNow(event: TvEvent, now: Date): boolean {
+  let { start, end } = getLiveWindow(event);
   let nowTime = now.getTime();
-  return (
-    nowTime >= startOfDay(start).getTime() && nowTime <= endOfDay(end).getTime()
-  );
+  return nowTime >= start.getTime() && nowTime <= end.getTime();
 }
 
 // Official embed URL for an event, or null if embedding is not possible
@@ -436,7 +470,7 @@ export function getEmbedUrlForEvent(
   now?: Date
 ): ?string {
   let host = hostname || "localhost";
-  let live = isEventLiveToday(event, now || new Date());
+  let live = isEventLiveNow(event, now || new Date());
 
   if (event.platform === "youtube") {
     let id = event.video_id || getYouTubeVideoId(event.stream_url);
@@ -505,7 +539,7 @@ export function getEmbedUrlForChannel(
 const ARCHIVE_AFTER_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 // Groups events by time relative to now:
-// today: live now (see isEventLiveToday); upcoming: starts later;
+// today: live now (see getLiveWindow); upcoming: starts later;
 // past: ended less than 14 days ago; archive: ended 14+ days ago but kept
 // around (video_id or sgf_url - there's a recording to watch/replay)
 // instead of disappearing like a plain past event with nothing to show.
@@ -526,17 +560,16 @@ export function groupEventsByTime(
   } = { today: [], upcoming: [], past: [], archive: [] };
   let nowTime = now.getTime();
   for (let event of events) {
-    let start = new Date(event.date_start);
-    if (isEventLiveToday(event, now)) {
+    let window = getLiveWindow(event);
+    if (isEventLiveNow(event, now)) {
       groups.today.push(event);
       continue;
     }
-    if (nowTime < startOfDay(start).getTime()) {
+    if (nowTime < window.start.getTime()) {
       groups.upcoming.push(event);
       continue;
     }
-    let end = event.date_end ? new Date(event.date_end) : start;
-    let ageMs = nowTime - endOfDay(end).getTime();
+    let ageMs = nowTime - window.end.getTime();
     if (ageMs < ARCHIVE_AFTER_MS) {
       groups.past.push(event);
     } else if (event.video_id || event.sgf_url) {

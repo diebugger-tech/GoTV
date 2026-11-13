@@ -3,6 +3,7 @@ import {
   getLiveEventGames,
   getLiveEventForGame,
   getLiveBroadcasts,
+  getLiveWindow,
   hasVideoStream,
   validateTvEvent,
   validateTvChannel,
@@ -640,6 +641,64 @@ describe("getLiveEvents", () => {
   it("returns an empty array when nothing is live", () => {
     let now = new Date("2026-01-01T12:00:00");
     expect(getLiveEvents(events, now)).toEqual([]);
+  });
+});
+
+describe("live window (start + duration)", () => {
+  let timed = (extra) =>
+    validateTvEvent({
+      id: "evening",
+      name: "Evening broadcast",
+      date_start: "2026-06-15",
+      start: "2026-06-15T19:00:00",
+      platform: "youtube",
+      stream_url: "https://www.youtube.com/@x",
+      ...extra,
+    });
+  let at = (time) => new Date("2026-06-15T" + time);
+
+  it("is not live in the morning of a 19:00 broadcast, but upcoming", () => {
+    let groups = groupEventsByTime([timed()], at("10:00:00"));
+    expect(groups.today).toEqual([]);
+    expect(groups.upcoming.map((e) => e.id)).toEqual(["evening"]);
+  });
+
+  it("goes live 15 min before start (pre-show)", () => {
+    expect(getLiveEvents([timed()], at("18:44:00"))).toEqual([]);
+    expect(getLiveEvents([timed()], at("18:46:00")).length).toBe(1);
+  });
+
+  it("ends after the default 4 h and then counts as past", () => {
+    expect(getLiveEvents([timed()], at("22:59:00")).length).toBe(1);
+    let groups = groupEventsByTime([timed()], at("23:01:00"));
+    expect(groups.today).toEqual([]);
+    expect(groups.past.map((e) => e.id)).toEqual(["evening"]);
+  });
+
+  it("uses duration_minutes when given", () => {
+    let short = timed({ duration_minutes: 90 });
+    expect(getLiveEvents([short], at("20:29:00")).length).toBe(1);
+    expect(getLiveEvents([short], at("20:31:00"))).toEqual([]);
+  });
+
+  it("keeps whole days for multi-day events even with a start time", () => {
+    let multi = timed({ date_end: "2026-06-16" });
+    expect(getLiveEvents([multi], at("10:00:00")).length).toBe(1);
+    expect(getLiveEvents([multi], new Date("2026-06-16T21:00:00")).length).toBe(
+      1
+    );
+  });
+
+  it("rejects an invalid duration_minutes", () => {
+    expect(timed({ duration_minutes: 0 })).toBe(null);
+    expect(timed({ duration_minutes: "90" })).toBe(null);
+    expect(timed({ duration_minutes: 100000 })).toBe(null);
+  });
+
+  it("exposes the window via getLiveWindow", () => {
+    let { start, end } = getLiveWindow(timed({ duration_minutes: 60 }));
+    expect(start.getTime()).toBe(at("18:45:00").getTime());
+    expect(end.getTime()).toBe(at("20:00:00").getTime());
   });
 });
 
