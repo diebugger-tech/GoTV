@@ -9,6 +9,8 @@ import {
   getEmbedUrlForEvent,
   getEmbedUrlForChannel,
   groupEventsByTime,
+  groupEventsByRegion,
+  getEventRegion,
   getLiveEvents,
   getNextUpcomingEvent,
   fetchTvEvents,
@@ -151,6 +153,44 @@ describe("validateTvEvent", () => {
         platform: "twitch",
         stream_url: "https://x",
         start: "not-a-datetime",
+      })
+    ).toBe(null);
+  });
+
+  it("accepts a valid region field", () => {
+    let event = validateTvEvent({
+      id: "x",
+      name: "X",
+      date_start: "2026-01-01",
+      platform: "other",
+      stream_url: "https://x",
+      region: "de",
+    });
+    expect(event).not.toBe(null);
+    expect(event.region).toBe("de");
+  });
+
+  it("leaves region undefined when not given", () => {
+    let event = validateTvEvent({
+      id: "x",
+      name: "X",
+      date_start: "2026-01-01",
+      platform: "other",
+      stream_url: "https://x",
+    });
+    expect(event).not.toBe(null);
+    expect(event.region).toBe(undefined);
+  });
+
+  it("rejects an invalid region value", () => {
+    expect(
+      validateTvEvent({
+        id: "x",
+        name: "X",
+        date_start: "2026-01-01",
+        platform: "other",
+        stream_url: "https://x",
+        region: "us",
       })
     ).toBe(null);
   });
@@ -497,6 +537,61 @@ describe("groupEventsByTime", () => {
     let groups = groupEventsByTime(recentWithRecording, now);
     expect(groups.past.map((e) => e.id)).toEqual(["recent-recorded"]);
     expect(groups.archive).toEqual([]);
+  });
+});
+
+describe("getEventRegion", () => {
+  it("returns the event's region when set to de", () => {
+    expect(getEventRegion({ region: "de" })).toBe("de");
+  });
+
+  it("defaults to intl when region is unset", () => {
+    expect(getEventRegion({})).toBe("intl");
+  });
+
+  it("defaults to intl for an explicit intl region too", () => {
+    expect(getEventRegion({ region: "intl" })).toBe("intl");
+  });
+});
+
+describe("groupEventsByRegion", () => {
+  let de1 = validateTvEvent({
+    id: "de1",
+    name: "DE later",
+    date_start: "2026-12-01",
+    platform: "other",
+    stream_url: "https://x",
+    region: "de",
+  });
+  let de2 = validateTvEvent({
+    id: "de2",
+    name: "DE earlier",
+    date_start: "2026-11-01",
+    platform: "other",
+    stream_url: "https://x",
+    region: "de",
+  });
+  let intlNoRegion = validateTvEvent({
+    id: "intl-default",
+    name: "No region set",
+    date_start: "2026-11-15",
+    platform: "youtube",
+    stream_url: "https://www.youtube.com/@x",
+  });
+
+  it("splits events by region, defaulting to intl", () => {
+    let groups = groupEventsByRegion([de1, de2, intlNoRegion]);
+    expect(groups.de.map((e) => e.id)).toEqual(["de2", "de1"]);
+    expect(groups.intl.map((e) => e.id)).toEqual(["intl-default"]);
+  });
+
+  it("sorts each region group by date_start", () => {
+    let groups = groupEventsByRegion([de1, de2]);
+    expect(groups.de.map((e) => e.id)).toEqual(["de2", "de1"]);
+  });
+
+  it("returns empty arrays for an empty input", () => {
+    expect(groupEventsByRegion([])).toEqual({ de: [], intl: [] });
   });
 });
 

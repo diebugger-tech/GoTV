@@ -43,6 +43,7 @@ export type TvEvent = {
   channel?: { platform: "youtube" | "twitch", id: string },
   start?: string,
   source?: string,
+  region?: "de" | "intl",
 };
 
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{6,}$/;
@@ -97,6 +98,14 @@ export function validateTvEvent(value: Object): ?TvEvent {
   ) {
     return null;
   }
+  if (
+    value.region !== undefined &&
+    value.region !== null &&
+    value.region !== "de" &&
+    value.region !== "intl"
+  ) {
+    return null;
+  }
   let channel;
   if (value.channel !== undefined && value.channel !== null) {
     if (
@@ -138,7 +147,17 @@ export function validateTvEvent(value: Object): ?TvEvent {
   if (value.source) {
     event.source = value.source;
   }
+  if (value.region) {
+    event.region = value.region;
+  }
   return event;
+}
+
+// region's effective value for display/grouping purposes - missing on an
+// event (e.g. every hand-maintained entry predating this field) means
+// "intl", not an error (see validateTvEvent).
+export function getEventRegion(event: TvEvent): "de" | "intl" {
+  return event.region === "de" ? "de" : "intl";
 }
 
 // ---------------------------------------------------------------------------
@@ -478,6 +497,31 @@ export function groupEventsByTime(
     // else: past its 14-day window with nothing recorded - drop it
   }
   for (let key of ["today", "upcoming", "past", "archive"]) {
+    groups[(key: any)].sort(
+      (a: TvEvent, b: TvEvent) =>
+        new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
+    );
+  }
+  return groups;
+}
+
+// Splits events into the two Kalender-tab region groups (see
+// TvEvent.region/getEventRegion) and sorts each by start date. Used by
+// CalendarView for its own rendering only - independent of
+// groupEventsByTime, which keeps its existing today/upcoming/past/archive
+// semantics unchanged (the Live tab's getLiveEvents/getNextUpcomingEvent
+// depend on that exact shape and are not affected by this grouping).
+export function groupEventsByRegion(
+  events: Array<TvEvent>
+): { de: Array<TvEvent>, intl: Array<TvEvent> } {
+  let groups: { de: Array<TvEvent>, intl: Array<TvEvent> } = {
+    de: [],
+    intl: [],
+  };
+  for (let event of events) {
+    groups[getEventRegion(event)].push(event);
+  }
+  for (let key of ["de", "intl"]) {
     groups[(key: any)].sort(
       (a: TvEvent, b: TvEvent) =>
         new Date(a.date_start).getTime() - new Date(b.date_start).getTime()
