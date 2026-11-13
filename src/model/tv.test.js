@@ -3,6 +3,7 @@ import {
   getLiveEventGames,
   getLiveEventForGame,
   validateTvEvent,
+  validateTvChannel,
   getYouTubeVideoId,
   getTwitchChannel,
   getEmbedUrlForEvent,
@@ -10,6 +11,7 @@ import {
   getLiveEvents,
   getNextUpcomingEvent,
   fetchTvEvents,
+  fetchTvChannels,
   _resetTvEventsCache,
   REMOTE_EVENTS_URL,
 } from "./tv";
@@ -148,6 +150,59 @@ describe("validateTvEvent", () => {
         platform: "twitch",
         stream_url: "https://x",
         start: "not-a-datetime",
+      })
+    ).toBe(null);
+  });
+});
+
+describe("validateTvChannel", () => {
+  it("accepts a valid youtube channel", () => {
+    let channel = validateTvChannel({
+      id: "baduk-tv",
+      name: "Baduk TV",
+      platform: "youtube",
+      url: "https://www.youtube.com/@BadukTV",
+      channel_id: "UCDDpGwSirMEje8H0fI7wM_A",
+      notes: "Koreanische Profiturniere",
+    });
+    expect(channel).not.toBe(null);
+    expect(channel.id).toBe("baduk-tv");
+    expect(channel.notes).toBe("Koreanische Profiturniere");
+  });
+
+  it("accepts a valid twitch channel without notes", () => {
+    let channel = validateTvChannel({
+      id: "egf-twitch",
+      name: "European Go Federation (Twitch)",
+      platform: "twitch",
+      url: "https://www.twitch.tv/europeangofederation",
+      channel_id: "europeangofederation",
+    });
+    expect(channel).not.toBe(null);
+    expect(channel.notes).toBe(undefined);
+  });
+
+  it("rejects entries with invalid or missing fields", () => {
+    expect(validateTvChannel(null)).toBe(null);
+    expect(validateTvChannel({ id: "x" })).toBe(null);
+    expect(
+      // "other" is valid for TvEvent but not for a standing TvChannel -
+      // the platform determines the embed shape and there's no generic one.
+      validateTvChannel({
+        id: "x",
+        name: "X",
+        platform: "other",
+        url: "https://x",
+        channel_id: "123",
+      })
+    ).toBe(null);
+    expect(
+      validateTvChannel({
+        id: "x",
+        name: "X",
+        platform: "youtube",
+        url: "https://x",
+        // missing channel_id
       })
     ).toBe(null);
   });
@@ -627,5 +682,83 @@ describe("fetchTvEvents", () => {
     nowSpy.mockReturnValue(1000000 + 61 * 60 * 1000);
     await fetchTvEvents();
     expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("fetchTvChannels", () => {
+  let originalFetch;
+
+  function okResponse(body) {
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: () => Promise.resolve(body),
+    });
+  }
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+    _resetTvEventsCache();
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.restoreAllMocks();
+  });
+
+  it("validates and returns the channels array", async () => {
+    let remoteBody = {
+      events: [],
+      channels: [
+        {
+          id: "baduk-tv",
+          name: "Baduk TV",
+          platform: "youtube",
+          url: "https://www.youtube.com/@BadukTV",
+          channel_id: "UCDDpGwSirMEje8H0fI7wM_A",
+        },
+      ],
+    };
+    global.fetch = jest.fn(() => okResponse(remoteBody));
+    let channels = await fetchTvChannels();
+    expect(channels.map((c) => c.id)).toEqual(["baduk-tv"]);
+  });
+
+  it("defaults to an empty list when the file has no channels field", async () => {
+    global.fetch = jest.fn(() => okResponse({ events: [] }));
+    let channels = await fetchTvChannels();
+    expect(channels).toEqual([]);
+  });
+
+  it("skips invalid channel entries", async () => {
+    let remoteBody = {
+      events: [],
+      channels: [{ id: "bad", name: "Bad" }], // missing platform/url/channel_id
+    };
+    global.fetch = jest.fn(() => okResponse(remoteBody));
+    let channels = await fetchTvChannels();
+    expect(channels).toEqual([]);
+  });
+
+  it("shares the fetch and cache with fetchTvEvents (same source file)", async () => {
+    global.fetch = jest.fn(() =>
+      okResponse({
+        events: [
+          {
+            id: "e1",
+            name: "E",
+            date_start: "2026-01-01",
+            platform: "youtube",
+            stream_url: "https://www.youtube.com/@x",
+          },
+        ],
+        channels: [],
+      })
+    );
+    let events = await fetchTvEvents();
+    let channels = await fetchTvChannels();
+    expect(events.map((e) => e.id)).toEqual(["e1"]);
+    expect(channels).toEqual([]);
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

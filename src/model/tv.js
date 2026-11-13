@@ -141,6 +141,62 @@ export function validateTvEvent(value: Object): ?TvEvent {
   return event;
 }
 
+// ---------------------------------------------------------------------------
+// TV channels: a standing roster of YouTube/Twitch channels, independent of
+// any specific event's dates (events.json's "channels" array). Shown in the
+// Kalender tab's always-visible "Sender" section - see ChannelCard.
+// ---------------------------------------------------------------------------
+
+export type TvChannel = {
+  id: string,
+  name: string,
+  platform: "youtube" | "twitch",
+  url: string,
+  channel_id: string,
+  notes?: string,
+};
+
+// Returns a valid TvChannel, or null if the entry is unusable (caller logs
+// + skips - same contract as validateTvEvent).
+export function validateTvChannel(value: Object): ?TvChannel {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  if (typeof value.id !== "string" || !value.id) {
+    return null;
+  }
+  if (typeof value.name !== "string" || !value.name) {
+    return null;
+  }
+  if (value.platform !== "youtube" && value.platform !== "twitch") {
+    return null;
+  }
+  if (typeof value.url !== "string" || !value.url) {
+    return null;
+  }
+  if (typeof value.channel_id !== "string" || !value.channel_id) {
+    return null;
+  }
+  if (
+    value.notes !== undefined &&
+    value.notes !== null &&
+    typeof value.notes !== "string"
+  ) {
+    return null;
+  }
+  let channel: TvChannel = {
+    id: value.id,
+    name: value.name,
+    platform: value.platform,
+    url: value.url,
+    channel_id: value.channel_id,
+  };
+  if (value.notes) {
+    channel.notes = value.notes;
+  }
+  return channel;
+}
+
 // The community-editable calendar: anyone can open a pull request against
 // this file without a client release. raw.githubusercontent.com always
 // sends Access-Control-Allow-Origin: *, so this is fetchable directly from
@@ -150,9 +206,11 @@ export const REMOTE_EVENTS_URL =
 const LOCAL_EVENTS_URL = "tv/events.json";
 const EVENTS_CACHE_MS = 60 * 60 * 1000; // 1 hour
 
-let _eventsCache: ?{ events: Array<TvEvent>, fetchedAt: number } = null;
+type TvData = { events: Array<TvEvent>, channels: Array<TvChannel> };
 
-function fetchAndValidateEvents(url: string): Promise<Array<TvEvent>> {
+let _tvDataCache: ?{ data: TvData, fetchedAt: number } = null;
+
+function fetchAndValidateTvData(url: string): Promise<TvData> {
   return fetch(url)
     .then((res) => {
       if (!res.ok) {
@@ -171,38 +229,63 @@ function fetchAndValidateEvents(url: string): Promise<Array<TvEvent>> {
           console.log("[tv] Skipping invalid calendar entry:", raw);
         }
       }
-      return events;
+      // "channels" is a newer, second top-level array. An older
+      // events.json (e.g. the remote copy before this field existed) has
+      // none at all - that's an empty list, not an error.
+      let rawChannels =
+        data && Array.isArray(data.channels) ? data.channels : [];
+      let channels: Array<TvChannel> = [];
+      for (let raw of rawChannels) {
+        let channel = validateTvChannel(raw);
+        if (channel) {
+          channels.push(channel);
+        } else {
+          console.log("[tv] Skipping invalid channel entry:", raw);
+        }
+      }
+      return { events, channels };
     });
 }
 
-// Loads and validates the Go TV calendar: the remote copy on GitHub first
-// (see REMOTE_EVENTS_URL), falling back to the bundled public/tv/events.json
-// when offline or the remote fetch fails for any reason (network error,
-// non-2xx, bad JSON, no valid entries after validation still counts as a
-// successful - if empty - result, not a failure). Same validation either
-// way. Successful results are cached in memory for an hour.
-export function fetchTvEvents(): Promise<Array<TvEvent>> {
-  if (_eventsCache && Date.now() - _eventsCache.fetchedAt < EVENTS_CACHE_MS) {
-    return Promise.resolve(_eventsCache.events);
+// Loads and validates the Go TV calendar data (events + standing channels):
+// the remote copy on GitHub first (see REMOTE_EVENTS_URL), falling back to
+// the bundled public/tv/events.json when offline or the remote fetch fails
+// for any reason (network error, non-2xx, bad JSON, no valid entries after
+// validation still counts as a successful - if empty - result, not a
+// failure). Same validation either way. Successful results are cached in
+// memory for an hour.
+function fetchTvData(): Promise<TvData> {
+  if (_tvDataCache && Date.now() - _tvDataCache.fetchedAt < EVENTS_CACHE_MS) {
+    return Promise.resolve(_tvDataCache.data);
   }
-  return fetchAndValidateEvents(REMOTE_EVENTS_URL)
+  return fetchAndValidateTvData(REMOTE_EVENTS_URL)
     .catch((err) => {
       console.log(
         "[tv] Remote events.json unavailable, falling back to local copy:",
         err
       );
-      return fetchAndValidateEvents(LOCAL_EVENTS_URL);
+      return fetchAndValidateTvData(LOCAL_EVENTS_URL);
     })
-    .then((events) => {
-      _eventsCache = { events, fetchedAt: Date.now() };
-      return events;
+    .then((data) => {
+      _tvDataCache = { data, fetchedAt: Date.now() };
+      return data;
     });
+}
+
+export function fetchTvEvents(): Promise<Array<TvEvent>> {
+  return fetchTvData().then((data) => data.events);
+}
+
+// The standing channel roster (see TvChannel) - same source file and cache
+// as fetchTvEvents(), always available regardless of any event's dates.
+export function fetchTvChannels(): Promise<Array<TvChannel>> {
+  return fetchTvData().then((data) => data.channels);
 }
 
 // Test-only: the module-level cache above would otherwise leak between
 // tests (and between e.g. repeated dev-harness reloads in the same tab).
 export function _resetTvEventsCache() {
-  _eventsCache = null;
+  _tvDataCache = null;
 }
 
 // Extract a YouTube video id from a watch/share/embed/live/shorts URL.
