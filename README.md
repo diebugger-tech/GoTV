@@ -141,6 +141,52 @@ Past events are shown for 14 days after they end, then dropped from the
 calendar - unless they have a `video_id` or `sgf_url`, in which case they
 move to an "Archiv" section instead of disappearing.
 
+### Sender eintragen
+
+Alongside the date-bound events above, `public/tv/events.json` has a
+second, standing list: `channels`. A channel has no event date - it
+always shows up in the Kalender tab's "Sender" section (above
+"Archiv"), not just while something specific is scheduled.
+
+Each entry:
+
+| Field | Required | Description |
+|---|---|---|
+| `id` | yes | Stable, unique string (used as the React key). |
+| `name` | yes | Channel name shown in the "Sender" section. |
+| `platform` | yes | `"youtube"` or `"twitch"` (no `"other"` - both need a known, official embed shape). |
+| `url` | yes | The channel's page; used for "Extern öffnen" and as the starting point to find a YouTube `channel_id` (see below). |
+| `channel_id` | yes | YouTube: the `UC...` channel id, *not* the `@handle`. Twitch: the channel login (the last path segment of its URL). |
+| `notes` | no | Short free-text shown under the name. |
+
+Example entry:
+
+```json
+{
+  "id": "example-channel",
+  "name": "Example Go Channel",
+  "platform": "youtube",
+  "url": "https://www.youtube.com/@ExampleGoChannel",
+  "channel_id": "UCxxxxxxxxxxxxxxxxxxxxxx",
+  "notes": "Example only - replace with a real channel."
+}
+```
+
+Finding a YouTube channel's `UC...` id from its `@handle` URL: open
+the channel page, view its page source (`Strg`+`U` in the browser, or
+`curl <url>`), and search for `"externalId"` - the value right after
+it is the channel id. A Twitch `channel_id` needs no lookup: it's
+just the channel's login, the last segment of `twitch.tv/<login>`.
+
+Each Sender entry always tries to embed the channel's current live
+stream (`youtube-nocookie.com/embed/live_stream?channel=...` /
+`player.twitch.tv/?channel=...` - the same official embeds Events use
+for their `channel` field). There is no way to know in advance,
+without an API key, whether a channel is actually broadcasting right
+now; if it isn't, the official player itself shows its own "offline"
+state once loaded ("Gerade keine Übertragung"), and "Extern öffnen"
+stays available either way.
+
 ## Code Overview
 
 This project uses JavaScript, React, and ES6+ with [Flow](https://flow.org/) types. [VS Code](https://code.visualstudio.com/) (with eslint and flow extensions added) is a great editor for this setup.
