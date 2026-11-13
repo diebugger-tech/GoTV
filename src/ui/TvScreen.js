@@ -1,14 +1,16 @@
 // @flow
 import React, { PureComponent as Component } from "react";
-import GameList from "./game/GameList";
 import CalendarView from "./tv/CalendarView";
-import CalendarEventCard, {
-  formatEventDateRange,
-} from "./tv/CalendarEventCard";
+import BroadcastCard from "./tv/BroadcastCard";
+import { formatEventDateRange } from "./tv/CalendarEventCard";
 import StreamEmbed from "./tv/StreamEmbed";
 import SgfReplayView from "./tv/SgfReplayView";
 import { A, TabNav } from "./common";
-import { getNextUpcomingEvent, fetchTvEvents } from "../model/tv";
+import {
+  getNextUpcomingEvent,
+  fetchTvEvents,
+  validateTvEvent,
+} from "../model/tv";
 import { kgsTvSource } from "../model/TvSource";
 import type { TvEvent } from "../model/tv";
 import type { GameChannel, Room, Index, AppActions } from "../model";
@@ -20,6 +22,9 @@ type Props = {
   actions: AppActions,
   tvStreamUrl: ?string,
   tvReplayGameId: ?number,
+  // Optional injected calendar (dev harness/tests) - raw events.json
+  // entries, validated here; skips the fetch (same as CalendarView).
+  events?: Array<Object>,
 };
 
 type State = {
@@ -52,6 +57,18 @@ export default class TvScreen extends Component<Props, State> {
   }
 
   _loadEvents = () => {
+    if (this.props.events) {
+      // Raw entries, validated like events.json (as in CalendarView).
+      let tvEvents = [];
+      for (let raw of this.props.events) {
+        let event = validateTvEvent(raw);
+        if (event) {
+          tvEvents.push(event);
+        }
+      }
+      this.setState({ tvEventsStatus: "ready", tvEvents });
+      return;
+    }
     fetchTvEvents()
       .then((tvEvents) => {
         this.setState({ tvEventsStatus: "ready", tvEvents });
@@ -74,9 +91,13 @@ export default class TvScreen extends Component<Props, State> {
     let { activeTabId, replayUrl, tvEvents } = this.state;
 
     let now = new Date();
-    let liveEventGames = kgsTvSource.getLiveGames(activeGames);
-    let liveEvents = kgsTvSource.getLiveEvents(tvEvents, now);
-    let hasLive = liveEventGames.length > 0 || liveEvents.length > 0;
+    let broadcasts = kgsTvSource.getLiveBroadcasts(
+      activeGames,
+      tvEvents,
+      roomsById,
+      now
+    );
+    let hasLive = broadcasts.length > 0;
     let nextEvent = getNextUpcomingEvent(tvEvents, now);
     let replayGame = tvReplayGameId ? gamesById[tvReplayGameId] : null;
     let replayTree = replayGame ? replayGame.tree : null;
@@ -89,30 +110,15 @@ export default class TvScreen extends Component<Props, State> {
           <div className="TvScreen-live">
             {hasLive ? (
               <div className="TvScreen-live-content">
-                {liveEventGames.length ? (
-                  <div className="TvScreen-live-section">
-                    <div className="TvScreen-live-section-title">Partien</div>
-                    <GameList
-                      games={liveEventGames}
-                      roomsById={roomsById}
-                      onSelect={actions.onJoinGame}
-                    />
-                  </div>
-                ) : null}
-                {liveEvents.length ? (
-                  <div className="TvScreen-live-section">
-                    <div className="TvScreen-live-section-title">
-                      Übertragungen
-                    </div>
-                    {liveEvents.map((event) => (
-                      <CalendarEventCard
-                        key={event.id}
-                        event={event}
-                        onOpenReplay={this._onOpenReplay}
-                      />
-                    ))}
-                  </div>
-                ) : null}
+                {broadcasts.map((broadcast) => (
+                  <BroadcastCard
+                    key={broadcast.event.id}
+                    broadcast={broadcast}
+                    roomsById={roomsById}
+                    onJoinGame={actions.onJoinGame}
+                    onOpenReplay={this._onOpenReplay}
+                  />
+                ))}
               </div>
             ) : (
               <div className="TvScreen-live-empty">

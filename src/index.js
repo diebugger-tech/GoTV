@@ -75,15 +75,16 @@ if (
     komi: 6.5,
   };
 
-  // 5 "active" games; only the first is flagged as a KGS server event
-  // (game.event = true), so the TV Live tab's "Partien" section shows just
-  // that one - the rest are Watch-only material, not TV broadcasts.
+  // 6 "active" games. Live shows only boards matched to a live video
+  // broadcast: game 1 (event, tournament, ProA in the broadcast's
+  // kgs_players). Game 6 is an event-flagged lecture (demonstration) and
+  // must NOT appear; games 2-5 are Watch-only material.
   const DEV_FAKE_GAMES = [
     {
       id: 1,
       channelId: 1,
       roomId: null,
-      type: "ranked",
+      type: "tournament",
       moveNum: 88,
       event: true,
       rules: DEV_FAKE_RULES,
@@ -140,6 +141,18 @@ if (
         black: { name: "KyuA", rank: "5k", rankVal: -5 },
       },
     },
+    {
+      id: 6,
+      channelId: 6,
+      roomId: null,
+      type: "demonstration",
+      moveNum: 30,
+      event: true,
+      rules: DEV_FAKE_RULES,
+      players: {
+        owner: { name: "ProA", rank: "9p", rankVal: 19 },
+      },
+    },
   ];
 
   // Synthetic calendar events: one today (YouTube video, embeddable), one
@@ -155,7 +168,24 @@ if (
       platform: "youtube",
       stream_url: "https://www.youtube.com/watch?v=goTVdemoVideo1",
       video_id: "goTVdemoVideo1",
-      notes: "Synthetisches Event für den Dev-Harness.",
+      kgs_players: ["ProA"],
+      notes: "Synthetisches Event für den Dev-Harness (Brett: ProA).",
+    },
+    {
+      id: "dev-today-stream-only",
+      name: "Dev-Test: Länderturnier nur mit Stream (Twitch)",
+      date_start: devDaysFromNow(0),
+      platform: "twitch",
+      stream_url: "https://www.twitch.tv/example_channel",
+      notes: "Synthetisch: Übertragung ohne KGS-Brett.",
+    },
+    {
+      id: "dev-today-no-video",
+      name: "Dev-Test: Turnierseite ohne Video (darf NICHT unter Live)",
+      date_start: devDaysFromNow(0),
+      platform: "other",
+      stream_url: "https://www.dgob.de/",
+      kgs_players: ["ProA"],
     },
     {
       id: "dev-upcoming-twitch",
@@ -260,6 +290,7 @@ if (
               roomsById={{}}
               actions={this._actions}
               tvStreamUrl={tvStreamUrl}
+              events={DEV_SYNTHETIC_EVENTS}
             />
           </div>
           <div style={DEV_HARNESS_SECTION_STYLE}>
