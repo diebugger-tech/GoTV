@@ -1,0 +1,5 @@
+{
+  "_comment": "Manually maintained. Maps a DGoB event to one of public/tv/events.json's channels[].id (not a raw platform channel id). by_dgob_id (the numeric DGoB event id, as a string) overrides by_category (a DGoB category slug) for that one event. No assignment is guessed here - see AGENTS.md on not inventing unconfirmed entries. Add entries once a specific channel is actually known to carry that event/category.",
+  "by_dgob_id": {},
+  "by_category": {}
+}
