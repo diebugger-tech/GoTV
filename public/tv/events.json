@@ -9,5 +9,29 @@
       "video_id": "vFr3K2DORc8",
       "notes": "Beispiel-Event mit einbettbarem Video (offizieller Google-DeepMind-Kanal): kompletter Livestream von Spiel 1 des Google-DeepMind-Challenge-Match 2016, Kommentar von Michael Redmond (9p) und Chris Garlock."
     }
+  ],
+  "channels": [
+    {
+      "id": "baduk-tv",
+      "name": "Baduk TV",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/@BadukTV",
+      "channel_id": "UCDDpGwSirMEje8H0fI7wM_A",
+      "notes": "Koreanische Profiturniere (LG Cup u. a.)"
+    },
+    {
+      "id": "egf-youtube",
+      "name": "European Go Federation",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/@EuropeanGoFederation",
+      "channel_id": "UC5Y4xN0IWkZrmMp7bE0CtSw"
+    },
+    {
+      "id": "egf-twitch",
+      "name": "European Go Federation (Twitch)",
+      "platform": "twitch",
+      "url": "https://www.twitch.tv/europeangofederation",
+      "channel_id": "europeangofederation"
+    }
   ]
 }
