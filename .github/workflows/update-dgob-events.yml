@@ -1,0 +1,114 @@
+name: Update DGoB events
+
+# Daily import of German Go Federation (DGoB) tournament events into
+# public/tv/events.json - see tools/update_events.py (--source dgob) and
+# AGENTS.md. Runs unattended and commits directly to the default branch
+# (no PR review) - see the "Fehler-Alarm" steps below for why.
+
+on:
+  schedule:
+    - cron: "17 4 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: update-dgob-events
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # NOTE: this project's Python tooling is standard-library-only by
+      # design (AGENTS.md / "keine neuen schweren Dependencies") and has
+      # no pytest dependency anywhere - run via unittest instead, which
+      # covers the same import/link tests without adding one. See the
+      # task report for this deliberate deviation from the literal
+      # "pytest" wording.
+      - name: Run import/link tests
+        id: tests
+        run: |
+          python3 -m unittest tools.test_update_events tools.test_check_links -v 2>&1 | tee /tmp/dgob-workflow.log
+
+      - name: Import DGoB events
+        id: import
+        run: |
+          python3 tools/update_events.py --source dgob 2>&1 | tee -a /tmp/dgob-workflow.log
+
+      # A broken/dead link must turn this run red, but must never block
+      # the events.json update that already happened above - continued
+      # below in "Commit and push" regardless of this step's result.
+      - name: Check links
+        id: check_links
+        continue-on-error: true
+        run: |
+          python3 tools/check_links.py 2>&1 | tee -a /tmp/dgob-workflow.log
+
+      - name: Commit and push if events.json changed
+        id: commit
+        run: |
+          if git diff --quiet -- public/tv/events.json; then
+            echo "No changes to commit."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add public/tv/events.json
+            git commit -m "chore(tv): update DGoB events"
+            git push
+          fi
+
+      # --- Fehler-Alarm (point 9): this job commits directly to the
+      # default branch with no human review, so a failure here needs to
+      # surface somewhere a human will actually see it. Scoped to
+      # tests/import/commit only - check_links already turns the job red
+      # on its own (above) without needing a duplicate issue for every
+      # transient dead link.
+      - name: Close a stale failure issue once the import succeeds again
+        if: >-
+          always() &&
+          steps.tests.outcome == 'success' &&
+          steps.import.outcome == 'success' &&
+          steps.commit.outcome == 'success'
+        run: |
+          issue_number=$(gh issue list --search '"DGoB-Import fehlgeschlagen" in:title' --state open --json number --jq '.[0].number // empty')
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --body "wieder erfolgreich: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+            gh issue close "$issue_number"
+          fi
+
+      - name: Open or update the failure issue
+        if: >-
+          always() &&
+          (steps.tests.outcome == 'failure' ||
+           steps.import.outcome == 'failure' ||
+           steps.commit.outcome == 'failure')
+        run: |
+          gh label create tv-import --color ededed --description "DGoB-Import-Alarm" 2>/dev/null || true
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          error_tail=$(tail -n 60 /tmp/dgob-workflow.log 2>/dev/null || echo "(kein Log verfügbar)")
+          body=$(printf 'Lauf fehlgeschlagen: %s\n\n```\n%s\n```\n' "$run_url" "$error_tail")
+          issue_number=$(gh issue list --search '"DGoB-Import fehlgeschlagen" in:title' --state open --json number --jq '.[0].number // empty')
+          if [ -n "$issue_number" ]; then
+            gh issue comment "$issue_number" --body "$body"
+          else
+            gh issue create --title "DGoB-Import fehlgeschlagen" --label tv-import --body "$body"
+          fi
+
+      # Keep last, after the alert steps above, so it doesn't mask the
+      # tests/import/commit outcomes those steps key off of.
+      - name: Fail the job if the link check found a broken link
+        if: steps.check_links.outcome == 'failure'
+        run: exit 1
