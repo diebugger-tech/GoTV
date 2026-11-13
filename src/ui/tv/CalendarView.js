@@ -7,6 +7,7 @@ import {
   validateTvEvent,
   validateTvChannel,
   groupEventsByTime,
+  groupEventsByRegion,
   fetchTvEvents,
   fetchTvChannels,
 } from "../../model/tv";
@@ -29,11 +30,14 @@ type State = {
   channels: Array<TvChannel>,
 };
 
-const GROUP_LABELS = {
-  today: "Live & Today",
-  upcoming: "Upcoming",
-  past: "Past",
-  archive: "Archiv",
+// The Kalender zone (today+upcoming+past, i.e. everything groupEventsByTime
+// has not archived yet) and the Archiv zone are each grouped by region
+// instead of by time bucket - see groupEventsByRegion. "Sender" sits
+// between the two zones, unchanged and never grouped by region.
+const REGION_ORDER = ["de", "intl"];
+const REGION_LABELS = {
+  de: "Deutschland",
+  intl: "International",
 };
 
 export default class CalendarView extends Component<Props, State> {
@@ -85,6 +89,30 @@ export default class CalendarView extends Component<Props, State> {
       });
   };
 
+  _renderRegionGroup(
+    regionKey: "de" | "intl",
+    group: Array<TvEvent>,
+    keyPrefix: string
+  ) {
+    if (!group.length) {
+      return null;
+    }
+    return (
+      <div className="CalendarView-group" key={keyPrefix + "-" + regionKey}>
+        <div className="CalendarView-group-title">
+          {REGION_LABELS[regionKey]}
+        </div>
+        {group.map((event) => (
+          <CalendarEventCard
+            key={event.id}
+            event={event}
+            onOpenReplay={this.props.onOpenReplay}
+          />
+        ))}
+      </div>
+    );
+  }
+
   render() {
     let { status, events, channels } = this.state;
 
@@ -114,32 +142,27 @@ export default class CalendarView extends Component<Props, State> {
       );
     }
 
-    let groups = groupEventsByTime(events, new Date());
+    let timeGroups = groupEventsByTime(events, new Date());
+    let calendarEvents = [
+      ...timeGroups.today,
+      ...timeGroups.upcoming,
+      ...timeGroups.past,
+    ];
+    let calendarByRegion = groupEventsByRegion(calendarEvents);
+    let archiveByRegion = groupEventsByRegion(timeGroups.archive);
 
     return (
       <div className="CalendarView">
-        {["today", "upcoming", "past"].map((groupKey) => {
-          let group = groups[(groupKey: any)];
-          if (!group.length) {
-            return null;
-          }
-          return (
-            <div className="CalendarView-group" key={groupKey}>
-              <div className="CalendarView-group-title">
-                {GROUP_LABELS[(groupKey: any)]}
-              </div>
-              {group.map((event) => (
-                <CalendarEventCard
-                  key={event.id}
-                  event={event}
-                  onOpenReplay={this.props.onOpenReplay}
-                />
-              ))}
-            </div>
-          );
-        })}
-        {/* Standing roster, always shown above the Archiv - unlike the
-            date-bucketed groups above/below, it never hides when empty. */}
+        {REGION_ORDER.map((regionKey) =>
+          this._renderRegionGroup(
+            (regionKey: any),
+            calendarByRegion[(regionKey: any)],
+            "calendar"
+          )
+        )}
+        {/* Standing roster, always shown between the two zones - unlike
+            the region groups above/below, it never hides when empty, and
+            is never itself grouped by region. */}
         <div className="CalendarView-group" key="channels">
           <div className="CalendarView-group-title">Sender</div>
           {channels.map((channel) => (
@@ -151,20 +174,13 @@ export default class CalendarView extends Component<Props, State> {
             </div>
           ) : null}
         </div>
-        {groups.archive.length ? (
-          <div className="CalendarView-group" key="archive">
-            <div className="CalendarView-group-title">
-              {GROUP_LABELS.archive}
-            </div>
-            {groups.archive.map((event) => (
-              <CalendarEventCard
-                key={event.id}
-                event={event}
-                onOpenReplay={this.props.onOpenReplay}
-              />
-            ))}
-          </div>
-        ) : null}
+        {REGION_ORDER.map((regionKey) =>
+          this._renderRegionGroup(
+            (regionKey: any),
+            archiveByRegion[(regionKey: any)],
+            "archive"
+          )
+        )}
         {!events.length ? (
           <div className="CalendarView-empty">Keine Events im Kalender.</div>
         ) : null}

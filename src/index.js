@@ -144,7 +144,9 @@ if (
 
   // Synthetic calendar events: one today (YouTube video, embeddable), one
   // upcoming (Twitch channel, embeddable), one past (YouTube channel URL ->
-  // external-link fallback, plus an SGF to replay).
+  // external-link fallback, plus an SGF to replay), one region: "de" (so
+  // CalendarView's "Deutschland"/"International" groups both have >= 1
+  // entry - review criterion for the DGoB-import task's region grouping).
   const DEV_SYNTHETIC_EVENTS = [
     {
       id: "dev-today-youtube",
@@ -171,6 +173,15 @@ if (
       stream_url: "https://www.youtube.com/@examplechannel",
       sgf_url: "/tv/demo.sgf",
       notes: "Synthetisches Event für den Dev-Harness.",
+    },
+    {
+      id: "dev-de-bundesliga",
+      name: "Dev-Test: Go-Bundesliga (Region Deutschland)",
+      date_start: devDaysFromNow(5),
+      platform: "other",
+      stream_url: "https://www.dgob.de/turniere/go-bundesliga-3/",
+      region: "de",
+      notes: 'Synthetisches Event für den Dev-Harness (region: "de").',
     },
   ];
 
