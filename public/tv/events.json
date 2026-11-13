@@ -32,6 +32,52 @@
       "platform": "twitch",
       "url": "https://www.twitch.tv/europeangofederation",
       "channel_id": "europeangofederation"
+    },
+    {
+      "id": "aga-youtube",
+      "name": "American Go Association",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/@USGOWeb",
+      "channel_id": "UCR3qjXCiYEokW7bW3HkFzfg",
+      "notes": "US Go Congress (Masters, Girls Cup, Daily Recap), Partie-Reviews mit Michael Redmond 9p"
+    },
+    {
+      "id": "aga-twitch",
+      "name": "American Go Association (Twitch)",
+      "platform": "twitch",
+      "url": "https://www.twitch.tv/usgoweb",
+      "channel_id": "usgoweb"
+    },
+    {
+      "id": "nihonkiin-youtube",
+      "name": "Nihon Ki-in (日本棋院囲碁チャンネル)",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/@nihonkiin_ch",
+      "channel_id": "UCl4UWklKYTaUOZAhSJAprWQ",
+      "notes": "Offizielle japanische Profiturniere (Kisei, Honinbo, Oza u. a.), japanischer Kommentar"
+    },
+    {
+      "id": "jupptube-youtube",
+      "name": "JuppTube (FJ Dickhut)",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/@JuppTube",
+      "channel_id": "UCtIzNu7cS3h9DqOckBXU5wg",
+      "notes": "Go-Bundesliga-Berichterstattung, deutsche Meisterschaften, Team-EM (DGoB-Nationalmannschaft)"
+    },
+    {
+      "id": "yunguseng-dojang-youtube",
+      "name": "Yunguseng Dojang",
+      "platform": "youtube",
+      "url": "https://www.youtube.com/@YungusengDojang",
+      "channel_id": "UCEpsC_-9indqRsOjYuFStBQ",
+      "notes": "Lehrkanal von In-seong Hwang 8d, Live-Partien-Kommentar auf Englisch (kein Turnierveranstalter)"
+    },
+    {
+      "id": "yunguseng-dojang-twitch",
+      "name": "Yunguseng Dojang (Twitch)",
+      "platform": "twitch",
+      "url": "https://www.twitch.tv/yungusengdojang",
+      "channel_id": "yungusengdojang"
     }
   ]
 }
