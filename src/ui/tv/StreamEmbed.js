@@ -1,11 +1,16 @@
 // @flow
 import React, { PureComponent as Component } from "react";
 import { Button } from "../common";
-import { getEmbedUrlForEvent, getStreamUrlInfo } from "../../model/tv";
-import type { TvEvent, StreamUrlInfo } from "../../model/tv";
+import {
+  getEmbedUrlForEvent,
+  getEmbedUrlForChannel,
+  getStreamUrlInfo,
+} from "../../model/tv";
+import type { TvEvent, TvChannel, StreamUrlInfo } from "../../model/tv";
 
 type Props = {
   event?: TvEvent,
+  channel?: TvChannel,
   url?: string,
 };
 
@@ -28,9 +33,16 @@ export default class StreamEmbed extends Component<Props, State> {
   };
 
   _getInfo(): StreamUrlInfo {
-    let { event, url } = this.props;
+    let { event, channel, url } = this.props;
     if (url) {
       return getStreamUrlInfo(url, window.location.hostname);
+    }
+    if (channel) {
+      return {
+        platform: channel.platform,
+        embedUrl: getEmbedUrlForChannel(channel, window.location.hostname),
+        externalUrl: channel.url,
+      };
     }
     if (event) {
       return {
@@ -43,7 +55,10 @@ export default class StreamEmbed extends Component<Props, State> {
   }
 
   _getTitle(): string {
-    let { event, url } = this.props;
+    let { event, channel, url } = this.props;
+    if (channel) {
+      return channel.name;
+    }
     if (event) {
       return event.name;
     }
@@ -83,6 +98,13 @@ export default class StreamEmbed extends Component<Props, State> {
             Stream wird über den offiziellen {platformLabel}-Player eingebettet.
             Erst nach Klick wird eine Verbindung zu {platformLabel} aufgebaut.
           </div>
+          {this.props.channel ? (
+            <div className="StreamEmbed-placeholder-hint">
+              Dauerhafter Sender-Link, kein geplanter Termin: sendet der Kanal
+              gerade nicht live, zeigt der Player „Gerade keine
+              Übertragung&rdquo;. Extern öffnen bleibt in jedem Fall verfügbar.
+            </div>
+          ) : null}
           <div className="StreamEmbed-actions">
             <Button onClick={this._onLoad}>Stream laden</Button>
             <a

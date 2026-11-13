@@ -174,6 +174,28 @@ if (
     },
   ];
 
+  // Standing channel roster (independent of any event date, unlike the
+  // events above) - shown in the Kalender tab's always-visible "Sender"
+  // section.
+  const DEV_SYNTHETIC_CHANNELS = [
+    {
+      id: "dev-channel-youtube",
+      name: "Dev-Test: YouTube-Sender",
+      platform: "youtube",
+      url: "https://www.youtube.com/@examplechannel",
+      channel_id: "UCdevExampleChannelId000",
+      notes: "Synthetischer Sender für den Dev-Harness.",
+    },
+    {
+      id: "dev-channel-twitch",
+      name: "Dev-Test: Twitch-Sender",
+      platform: "twitch",
+      url: "https://www.twitch.tv/example_channel",
+      channel_id: "example_channel",
+      notes: "Synthetischer Sender für den Dev-Harness.",
+    },
+  ];
+
   const DEV_FAKE_USERS = {
     StreamFan: { name: "StreamFan", rank: "3k", rankVal: -3 },
     TwitchFan: { name: "TwitchFan", rank: "2d", rankVal: 2 },
@@ -232,20 +254,22 @@ if (
           <div style={DEV_HARNESS_SECTION_STYLE}>
             <div style={DEV_HARNESS_TITLE_STYLE}>
               2. Kalender-Gruppen (synthetische Events:
-              heute/demnächst/vergangen)
+              heute/demnächst/vergangen) + Sender-Liste
             </div>
             <CalendarView
               events={DEV_SYNTHETIC_EVENTS}
+              channels={DEV_SYNTHETIC_CHANNELS}
               onOpenReplay={this._onOpenReplay}
             />
           </div>
           <div style={DEV_HARNESS_SECTION_STYLE}>
             <div style={DEV_HARNESS_TITLE_STYLE}>
-              3. Embed-Varianten (YouTube-Video, Twitch-Kanal, Fallback)
+              3. Embed-Varianten (YouTube-Video, Twitch-Kanal, Fallback, Sender)
             </div>
             <StreamEmbed event={DEV_SYNTHETIC_EVENTS[0]} />
             <StreamEmbed event={DEV_SYNTHETIC_EVENTS[1]} />
             <StreamEmbed event={DEV_SYNTHETIC_EVENTS[2]} />
+            <StreamEmbed channel={DEV_SYNTHETIC_CHANNELS[0]} />
           </div>
           <div style={DEV_HARNESS_SECTION_STYLE}>
             <div style={DEV_HARNESS_TITLE_STYLE}>

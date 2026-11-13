@@ -7,6 +7,7 @@ import {
   getYouTubeVideoId,
   getTwitchChannel,
   getEmbedUrlForEvent,
+  getEmbedUrlForChannel,
   groupEventsByTime,
   getLiveEvents,
   getNextUpcomingEvent,
@@ -355,6 +356,50 @@ describe("getEmbedUrlForEvent", () => {
       new Date("2026-06-15T12:00:00")
     );
     expect(url).toBe("https://www.youtube-nocookie.com/embed/specificVideo1");
+  });
+});
+
+describe("getEmbedUrlForChannel", () => {
+  it("builds a youtube live_stream embed url", () => {
+    let url = getEmbedUrlForChannel({
+      id: "baduk-tv",
+      name: "Baduk TV",
+      platform: "youtube",
+      url: "https://www.youtube.com/@BadukTV",
+      channel_id: "UCDDpGwSirMEje8H0fI7wM_A",
+    });
+    expect(url).toBe(
+      "https://www.youtube-nocookie.com/embed/live_stream?channel=UCDDpGwSirMEje8H0fI7wM_A"
+    );
+  });
+
+  it("builds a twitch player embed url with the parent param", () => {
+    let url = getEmbedUrlForChannel(
+      {
+        id: "egf-twitch",
+        name: "European Go Federation (Twitch)",
+        platform: "twitch",
+        url: "https://www.twitch.tv/europeangofederation",
+        channel_id: "europeangofederation",
+      },
+      "example.com"
+    );
+    expect(url).toBe(
+      "https://player.twitch.tv/?channel=europeangofederation&parent=example.com"
+    );
+  });
+
+  it("defaults the parent param to localhost when no hostname is given", () => {
+    let url = getEmbedUrlForChannel({
+      id: "egf-twitch",
+      name: "EGF",
+      platform: "twitch",
+      url: "https://www.twitch.tv/europeangofederation",
+      channel_id: "europeangofederation",
+    });
+    expect(url).toBe(
+      "https://player.twitch.tv/?channel=europeangofederation&parent=localhost"
+    );
   });
 });
 

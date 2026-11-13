@@ -407,6 +407,34 @@ export function getEmbedUrlForEvent(
   return null;
 }
 
+// Official embed URL for a standing channel (see TvChannel) - always
+// defined, since a channel's platform+channel_id are required/validated
+// fields (unlike TvEvent, where embedding can be impossible). Reuses the
+// exact live-channel embed shapes from getEmbedUrlForEvent/415b1d7. There
+// is no keyless, client-side way to know in advance whether the channel
+// is actually broadcasting right now (see AGENTS.md roadmap item b) - if
+// it isn't, the official player shows its own "offline" state once
+// loaded; StreamEmbed's placeholder sets that expectation before the
+// two-click load.
+export function getEmbedUrlForChannel(
+  channel: TvChannel,
+  hostname?: string
+): string {
+  let host = hostname || "localhost";
+  if (channel.platform === "youtube") {
+    return (
+      "https://www.youtube-nocookie.com/embed/live_stream?channel=" +
+      channel.channel_id
+    );
+  }
+  return (
+    "https://player.twitch.tv/?channel=" +
+    channel.channel_id +
+    "&parent=" +
+    host
+  );
+}
+
 const ARCHIVE_AFTER_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 // Groups events by time relative to now:
