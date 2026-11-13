@@ -2,6 +2,8 @@ import {
   getLiveGames,
   getLiveEventGames,
   getLiveEventForGame,
+  getLiveBroadcasts,
+  hasVideoStream,
   validateTvEvent,
   validateTvChannel,
   getYouTubeVideoId,
@@ -54,6 +56,23 @@ describe("getLiveEventGames", () => {
       { ...makeGame(3, makeUser("a", 3), makeUser("b", 3), true), event: true }, // over
     ];
     expect(getLiveEventGames(games).map((g) => g.id)).toEqual([1]);
+  });
+
+  it("keeps real games only - no lectures or reviews, no rank threshold", () => {
+    let event = (id, type, rank) => ({
+      ...makeGame(id, makeUser("a", rank), makeUser("b", rank), false),
+      type,
+      event: true,
+    });
+    let games = [
+      event(1, "ranked", -5),
+      event(2, "free", 3),
+      event(3, "tournament", 11),
+      event(4, "demonstration", 11),
+      event(5, "review", 11),
+      event(6, "teaching", 11),
+    ];
+    expect(getLiveEventGames(games).map((g) => g.id)).toEqual([1, 2, 3]);
   });
 });
 
@@ -656,78 +675,163 @@ describe("getNextUpcomingEvent", () => {
 
 describe("getLiveEventForGame", () => {
   let now = new Date("2026-06-15T12:00:00");
-  let liveToday = (id, name, notes) =>
+  let liveToday = (id, name, extra) =>
     validateTvEvent({
       id,
       name,
-      notes,
       date_start: "2026-06-15",
       platform: "youtube",
       stream_url: "https://www.youtube.com/@x",
+      ...extra,
     });
+  let eventGame = (extra) => ({
+    ...makeGame(1, makeUser("goplayer", 3), makeUser("otherplayer", 3), false),
+    event: true,
+    ...extra,
+  });
 
   it("returns null for games that aren't KGS server events", () => {
     let game = makeGame(1, makeUser("a", 3), makeUser("b", 3), false);
-    expect(getLiveEventForGame(game, [liveToday("e1", "Event")], {}, now)).toBe(
-      null
-    );
+    let events = [liveToday("e1", "Event", { kgs_players: ["a"] })];
+    expect(getLiveEventForGame(game, events, {}, now)).toBe(null);
   });
 
   it("returns null when nothing is live", () => {
-    let game = {
-      ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
-      event: true,
-    };
-    expect(getLiveEventForGame(game, [], {}, now)).toBe(null);
+    expect(getLiveEventForGame(eventGame(), [], {}, now)).toBe(null);
   });
 
-  it("returns the only live event unambiguously", () => {
-    let game = {
-      ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
-      event: true,
-    };
+  it("does not guess: a single live event without kgs fields is no match", () => {
     let events = [liveToday("e1", "Some Cup")];
-    expect(getLiveEventForGame(game, events, {}, now).id).toBe("e1");
+    expect(getLiveEventForGame(eventGame(), events, {}, now)).toBe(null);
   });
 
-  it("prefers a match on the game's room name (kgs_room)", () => {
-    let game = {
-      ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
-      event: true,
-      roomId: 42,
-    };
+  it("matches the game's room name exactly via kgs_room", () => {
     let roomsById = { 42: { id: 42, name: "LG Cup" } };
     let events = [
-      liveToday("other", "Other Cup"),
-      liveToday("match", "LG Cup 2026 round 3"),
+      liveToday("other", "Other Cup", { kgs_room: "Other Room" }),
+      liveToday("match", "LG Cup 2026 round 3", { kgs_room: "lg cup" }),
     ];
+    let game = eventGame({ roomId: 42 });
     expect(getLiveEventForGame(game, events, roomsById, now).id).toBe("match");
   });
 
-  it("prefers a match on a player's name (kgs_players)", () => {
-    let game = {
-      ...makeGame(
-        1,
-        { name: "goplayer", rankVal: 3 },
-        { name: "otherplayer", rankVal: 3 },
-        false
-      ),
-      event: true,
-    };
+  it("matches a player's KGS name via kgs_players", () => {
     let events = [
-      liveToday("other", "Other Cup"),
-      liveToday("match", "Finals", "Commentary features goplayer"),
+      liveToday("other", "Other Cup", { kgs_players: ["nobody"] }),
+      liveToday("match", "Finals", { kgs_players: ["GoPlayer"] }),
     ];
-    expect(getLiveEventForGame(game, events, {}, now).id).toBe("match");
+    expect(getLiveEventForGame(eventGame(), events, {}, now).id).toBe("match");
   });
 
-  it("falls back to the first live event when nothing matches", () => {
-    let game = {
-      ...makeGame(1, makeUser("a", 3), makeUser("b", 3), false),
-      event: true,
-    };
-    let events = [liveToday("first", "Cup A"), liveToday("second", "Cup B")];
-    expect(getLiveEventForGame(game, events, {}, now).id).toBe("first");
+  it("ignores a matching event without a video channel", () => {
+    let events = [
+      validateTvEvent({
+        id: "page",
+        name: "Turnierseite",
+        date_start: "2026-06-15",
+        platform: "other",
+        stream_url: "https://example.com/turnier",
+        kgs_players: ["goplayer"],
+      }),
+    ];
+    expect(getLiveEventForGame(eventGame(), events, {}, now)).toBe(null);
+  });
+});
+
+describe("validateTvEvent kgs fields", () => {
+  let base = {
+    id: "e",
+    name: "E",
+    date_start: "2026-06-15",
+    platform: "youtube",
+    stream_url: "https://www.youtube.com/@x",
+  };
+
+  it("keeps trimmed kgs_room and kgs_players", () => {
+    let event = validateTvEvent({
+      ...base,
+      kgs_room: " LG Cup ",
+      kgs_players: [" a ", "b"],
+    });
+    expect(event.kgs_room).toBe("LG Cup");
+    expect(event.kgs_players).toEqual(["a", "b"]);
+  });
+
+  it("rejects malformed kgs fields", () => {
+    expect(validateTvEvent({ ...base, kgs_room: "" })).toBe(null);
+    expect(validateTvEvent({ ...base, kgs_room: 7 })).toBe(null);
+    expect(validateTvEvent({ ...base, kgs_players: "a" })).toBe(null);
+    expect(validateTvEvent({ ...base, kgs_players: ["a", ""] })).toBe(null);
+  });
+});
+
+describe("hasVideoStream", () => {
+  it("is true for YouTube/Twitch or a live channel, false for a plain page", () => {
+    expect(hasVideoStream({ platform: "youtube" })).toBe(true);
+    expect(hasVideoStream({ platform: "twitch" })).toBe(true);
+    expect(
+      hasVideoStream({
+        platform: "other",
+        channel: { platform: "youtube", id: "UC1" },
+      })
+    ).toBe(true);
+    expect(hasVideoStream({ platform: "other" })).toBe(false);
+  });
+});
+
+describe("getLiveBroadcasts", () => {
+  let now = new Date("2026-06-15T12:00:00");
+  let live = (id, extra) =>
+    validateTvEvent({
+      id,
+      name: id,
+      date_start: "2026-06-15",
+      platform: "twitch",
+      stream_url: "https://www.twitch.tv/somechannel",
+      ...extra,
+    });
+  let game = (id, black, white, extra) => ({
+    ...makeGame(id, makeUser(black, 5), makeUser(white, 5), false),
+    type: "tournament",
+    event: true,
+    ...extra,
+  });
+
+  it("lists every live video broadcast with its matching boards", () => {
+    let games = [
+      game(1, "a", "b"),
+      game(2, "c", "d"),
+      game(3, "x", "y"), // event game without broadcast -> not in Live
+    ];
+    let events = [
+      live("cup", { kgs_players: ["a", "c"] }),
+      live("youtube-only"), // international, no KGS boards
+      validateTvEvent({
+        id: "page-only",
+        name: "Turnierseite",
+        date_start: "2026-06-15",
+        platform: "other",
+        stream_url: "https://example.com",
+        kgs_players: ["x"],
+      }),
+    ];
+    let result = getLiveBroadcasts(games, events, {}, now);
+    expect(result.map((b) => [b.event.id, b.games.map((g) => g.id)])).toEqual([
+      ["cup", [1, 2]],
+      ["youtube-only", []],
+    ]);
+  });
+
+  it("never lists lectures as boards", () => {
+    let games = [game(1, "a", "b", { type: "demonstration" })];
+    let events = [live("cup", { kgs_players: ["a"] })];
+    expect(getLiveBroadcasts(games, events, {}, now)[0].games).toEqual([]);
+  });
+
+  it("is empty when nothing is live", () => {
+    expect(
+      getLiveBroadcasts([], [live("cup")], {}, new Date("2026-01-01T12:00:00"))
+    ).toEqual([]);
   });
 });
 

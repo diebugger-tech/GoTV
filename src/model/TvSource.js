@@ -2,22 +2,35 @@
 // Abstraction for where Go TV content comes from, so a future second
 // source doesn't mean rewriting TvScreen/GameScreen - see IgsTvSource below
 // for why there's only one implementation today.
-import { getLiveEventGames, getLiveEvents, getLiveEventForGame } from "./tv";
-import type { TvEvent } from "./tv";
+import {
+  getLiveEventGames,
+  getLiveEvents,
+  getLiveEventForGame,
+  getLiveBroadcasts,
+} from "./tv";
+import type { TvEvent, TvBroadcast } from "./tv";
 import type { GameChannel, Room, Index } from "./types";
 
 export interface TvSource {
-  // Currently broadcasted games (on KGS: active, not over, game.event === true).
+  // Currently broadcasted games (on KGS: active, not over, game.event === true,
+  // a real game - no lectures/reviews).
   getLiveGames(activeGames: Array<GameChannel>): Array<GameChannel>;
   // Calendar events for this source that are live right now.
   getLiveEvents(events: Array<TvEvent>, now: Date): Array<TvEvent>;
-  // Best-effort match between a watched game and a live calendar event.
+  // The live video broadcast a watched game belongs to (explicit match).
   getLiveEventForGame(
     game: GameChannel,
     events: Array<TvEvent>,
     roomsById: Index<Room>,
     now: Date
   ): ?TvEvent;
+  // TV -> Live: live broadcasts with a video channel, each with its boards.
+  getLiveBroadcasts(
+    activeGames: Array<GameChannel>,
+    events: Array<TvEvent>,
+    roomsById: Index<Room>,
+    now: Date
+  ): Array<TvBroadcast>;
 }
 
 // The only implemented TvSource: KGS, via the data KgsClient already parses
@@ -41,6 +54,15 @@ export class KgsTvSource implements TvSource {
   ): ?TvEvent {
     return getLiveEventForGame(game, events, roomsById, now);
   }
+
+  getLiveBroadcasts(
+    activeGames: Array<GameChannel>,
+    events: Array<TvEvent>,
+    roomsById: Index<Room>,
+    now: Date
+  ): Array<TvBroadcast> {
+    return getLiveBroadcasts(activeGames, events, roomsById, now);
+  }
 }
 
 // Pandanet/IGS as a second TvSource is deliberately NOT built: its terms of
@@ -63,6 +85,12 @@ export class IgsTvSource implements TvSource {
   }
 
   getLiveEventForGame(): ?TvEvent {
+    throw new Error(
+      "IgsTvSource is blocked - IGS terms of use have not been reviewed"
+    );
+  }
+
+  getLiveBroadcasts(): Array<TvBroadcast> {
     throw new Error(
       "IgsTvSource is blocked - IGS terms of use have not been reviewed"
     );

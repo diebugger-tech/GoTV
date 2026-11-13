@@ -16,12 +16,18 @@ export function getLiveGames(games: Array<GameChannel>): Array<GameChannel> {
 }
 
 // TV -> Live is reserved for broadcasts, not "any strong game currently in
-// progress" (that's what Watch is for): KGS-flagged server events
-// (relayed tournament games, KGS Plus lectures) that are actually ongoing.
+// progress" (that's what Watch is for): KGS-flagged server events that are
+// actually ongoing AND real games - relayed tournament games, never KGS Plus
+// lectures or reviews (those carry the event flag too). No rank threshold:
+// a relayed tournament game is strong by definition (Andreas, 13.11.2026).
+const REAL_GAME_TYPES = ["ranked", "free", "tournament"];
+
 export function getLiveEventGames(
   games: Array<GameChannel>
 ): Array<GameChannel> {
-  return getLiveGames(games).filter((game) => !!game.event);
+  return getLiveGames(games).filter(
+    (game) => !!game.event && REAL_GAME_TYPES.indexOf(game.type) !== -1
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -44,9 +50,20 @@ export type TvEvent = {
   start?: string,
   source?: string,
   region?: "de" | "intl",
+  // Which KGS boards belong to this broadcast (exact match, case-insensitive):
+  // the KGS room the games are relayed in and/or the players' KGS names.
+  kgs_room?: string,
+  kgs_players?: Array<string>,
 };
 
 const YOUTUBE_ID_RE = /^[A-Za-z0-9_-]{6,}$/;
+
+function isStringList(value: mixed): boolean {
+  return (
+    Array.isArray(value) &&
+    value.every((item) => typeof item === "string" && !!item.trim())
+  );
+}
 
 // Returns a valid TvEvent, or null if the entry is unusable (caller logs + skips)
 export function validateTvEvent(value: Object): ?TvEvent {
@@ -119,6 +136,20 @@ export function validateTvEvent(value: Object): ?TvEvent {
     }
     channel = { platform: value.channel.platform, id: value.channel.id };
   }
+  if (
+    value.kgs_room !== undefined &&
+    value.kgs_room !== null &&
+    (typeof value.kgs_room !== "string" || !value.kgs_room.trim())
+  ) {
+    return null;
+  }
+  if (
+    value.kgs_players !== undefined &&
+    value.kgs_players !== null &&
+    !isStringList(value.kgs_players)
+  ) {
+    return null;
+  }
   let event: TvEvent = {
     id: value.id,
     name: value.name,
@@ -150,7 +181,24 @@ export function validateTvEvent(value: Object): ?TvEvent {
   if (value.region) {
     event.region = value.region;
   }
+  if (value.kgs_room) {
+    event.kgs_room = value.kgs_room.trim();
+  }
+  if (value.kgs_players && value.kgs_players.length) {
+    event.kgs_players = value.kgs_players.map((name) => name.trim());
+  }
   return event;
+}
+
+// Go TV only shows broadcasts with a video channel (Andreas, 13.11.2026):
+// YouTube or Twitch, as a video/stream URL or a live channel. A tournament
+// page without video ("other") stays out of Live and the calendar.
+export function hasVideoStream(event: TvEvent): boolean {
+  return (
+    event.platform === "youtube" ||
+    event.platform === "twitch" ||
+    !!event.channel
+  );
 }
 
 // region's effective value for display/grouping purposes - missing on an
@@ -548,12 +596,35 @@ export function getNextUpcomingEvent(
   return groupEventsByTime(events, now).upcoming[0] || null;
 }
 
-// Best-effort match between a watched KGS event game and a live calendar
-// entry, so the stream can show up next to the board. events.json has no
-// room/player fields to match against, so this is necessarily a heuristic:
-// with exactly one broadcast live, that's it; with several, prefer one
-// whose name/notes mentions the game's room (kgs_room) or a player
-// (kgs_players), falling back to the first live entry otherwise.
+// Whether a KGS event game belongs to a broadcast: explicit fields only
+// (events.json kgs_room / kgs_players), compared exactly and
+// case-insensitively. No guessing from event names any more - a game
+// without a matching broadcast stays in Watch.
+export function gameMatchesEvent(
+  game: GameChannel,
+  event: TvEvent,
+  roomsById: Index<Room>
+): boolean {
+  let norm = (s: ?string) => (s || "").trim().toLowerCase();
+  if (event.kgs_room) {
+    let room = game.roomId ? roomsById[game.roomId] : null;
+    if (room && room.name && norm(room.name) === norm(event.kgs_room)) {
+      return true;
+    }
+  }
+  if (event.kgs_players && game.players) {
+    let wanted = event.kgs_players.map(norm);
+    for (let role of Object.keys(game.players)) {
+      let user = game.players[(role: any)];
+      if (user && user.name && wanted.indexOf(norm(user.name)) !== -1) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// The live video broadcast a watched KGS event game belongs to, or null.
 export function getLiveEventForGame(
   game: GameChannel,
   events: Array<TvEvent>,
@@ -563,31 +634,34 @@ export function getLiveEventForGame(
   if (!game.event) {
     return null;
   }
-  let live = getLiveEvents(events, now);
-  if (!live.length) {
-    return null;
-  }
-  if (live.length === 1) {
-    return live[0];
-  }
-  let needles = [];
-  let room = game.roomId ? roomsById[game.roomId] : null;
-  if (room && room.name) {
-    needles.push(room.name.toLowerCase());
-  }
-  if (game.players) {
-    for (let role of ["black", "white"]) {
-      let user = game.players[(role: any)];
-      if (user && user.name) {
-        needles.push(user.name.toLowerCase());
-      }
-    }
-  }
-  let matched = live.find((event) => {
-    let haystack = (event.name + " " + (event.notes || "")).toLowerCase();
-    return needles.some((needle) => haystack.indexOf(needle) !== -1);
-  });
-  return matched || live[0];
+  let live = getLiveEvents(events, now).filter(hasVideoStream);
+  return live.find((event) => gameMatchesEvent(game, event, roomsById)) || null;
+}
+
+export type TvBroadcast = {
+  event: TvEvent,
+  games: Array<GameChannel>,
+};
+
+// TV -> Live: every broadcast that is live right now AND has a video channel,
+// each with the KGS boards relayed for it (may be none - e.g. an
+// international tournament shown on YouTube only). KGS event games that
+// match no broadcast are not part of Live.
+export function getLiveBroadcasts(
+  games: Array<GameChannel>,
+  events: Array<TvEvent>,
+  roomsById: Index<Room>,
+  now: Date
+): Array<TvBroadcast> {
+  let eventGames = getLiveEventGames(games);
+  return getLiveEvents(events, now)
+    .filter(hasVideoStream)
+    .map((event) => ({
+      event,
+      games: eventGames.filter((game) =>
+        gameMatchesEvent(game, event, roomsById)
+      ),
+    }));
 }
 
 // ---------------------------------------------------------------------------

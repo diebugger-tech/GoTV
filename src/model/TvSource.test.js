@@ -39,7 +39,7 @@ describe("KgsTvSource", () => {
     ]);
   });
 
-  it("delegates getLiveEventForGame to the room/player heuristic", () => {
+  it("delegates getLiveEventForGame to the explicit kgs_players match", () => {
     let game = {
       id: 1,
       type: "ranked",
@@ -53,10 +53,38 @@ describe("KgsTvSource", () => {
         date_start: "2026-06-15",
         platform: "youtube",
         stream_url: "https://www.youtube.com/@x",
+        kgs_players: ["A"],
       },
     ];
     let now = new Date("2026-06-15T12:00:00");
     expect(source.getLiveEventForGame(game, events, {}, now).id).toBe("e1");
+  });
+
+  it("delegates getLiveBroadcasts", () => {
+    let games = [
+      {
+        id: 1,
+        type: "tournament",
+        over: false,
+        event: true,
+        players: { black: { name: "a" }, white: { name: "b" } },
+      },
+    ];
+    let events = [
+      {
+        id: "e1",
+        name: "Cup",
+        date_start: "2026-06-15",
+        platform: "twitch",
+        stream_url: "https://www.twitch.tv/somechannel",
+        kgs_players: ["b"],
+      },
+    ];
+    let now = new Date("2026-06-15T12:00:00");
+    let broadcasts = source.getLiveBroadcasts(games, events, {}, now);
+    expect(
+      broadcasts.map((b) => [b.event.id, b.games.map((g) => g.id)])
+    ).toEqual([["e1", [1]]]);
   });
 });
 
@@ -73,6 +101,12 @@ describe("IgsTvSource", () => {
 
   it("blocks getLiveEventForGame", () => {
     expect(() => source.getLiveEventForGame({}, [], {}, new Date())).toThrow(
+      /blocked/
+    );
+  });
+
+  it("blocks getLiveBroadcasts", () => {
+    expect(() => source.getLiveBroadcasts([], [], {}, new Date())).toThrow(
       /blocked/
     );
   });
