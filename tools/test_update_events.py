@@ -427,6 +427,72 @@ class DgobEventToTvEventChannelTest(unittest.TestCase):
         self.assertNotIn("channel", tv_event)
 
 
+class DgobVideoLinksTest(unittest.TestCase):
+    # Shape of the real DGoB description of the German Championship final
+    # 2026 (event 22875, fetched 2026-11-13), shortened.
+    DESCRIPTION = (
+        '<p>Findet auf <a href="https://www.schloss-hundisburg.de/">Schloss'
+        " Hundisburg</a> statt.</p><p>Live-Übertragung: Die Partien werden"
+        ' auf <a href="https://www.twitch.tv/egf_games">Twitch</a>'
+        ' übertragen. <a href="https://www.twitch.tv/europeangofederation">'
+        'Kommentarstream</a>, FJD streamt auf <a href="https://www.youtube.com'
+        '/@JuppTube">YouTube</a>. Partien auf <a href="https://gogameslive.eu'
+        '/german-championship-2026/">GoGamesLive</a>.</p>'
+    )
+
+    def raw(self, description):
+        return dict(DgobEventToTvEventChannelTest.RAW, description=description)
+
+    def test_extracts_twitch_and_youtube_links_in_order(self):
+        self.assertEqual(
+            update_events.dgob_video_links(self.raw(self.DESCRIPTION)),
+            [
+                ("twitch", "https://www.twitch.tv/egf_games"),
+                ("twitch", "https://www.twitch.tv/europeangofederation"),
+                ("youtube", "https://www.youtube.com/@JuppTube"),
+            ],
+        )
+
+    def test_ignores_non_video_links_and_duplicates(self):
+        description = (
+            '<a href="https://www.twitch.tv/directory">x</a>'
+            '<a href="https://www.dgob.de/">x</a>'
+            '<a href="https://youtu.be/abcdef123">x</a>'
+            '<a href="https://youtu.be/abcdef123">again</a>'
+            '<a href="https://www.twitch.tv/videos/123456">vod</a>'
+        )
+        self.assertEqual(
+            update_events.dgob_video_links(self.raw(description)),
+            [
+                ("youtube", "https://youtu.be/abcdef123"),
+                ("twitch", "https://www.twitch.tv/videos/123456"),
+            ],
+        )
+
+    def test_no_description_no_links(self):
+        self.assertEqual(update_events.dgob_video_links(self.raw(None)), [])
+
+    def test_first_link_becomes_the_stream_further_ones_go_to_notes(self):
+        raw = dict(self.raw(self.DESCRIPTION), venue={"venue": "Schloss Hundisburg"})
+        stream_map = {"by_dgob_id": {}, "by_category": {}}
+        tv_event = update_events.dgob_event_to_tv_event(raw, stream_map, {})
+        self.assertEqual(tv_event["platform"], "twitch")
+        self.assertEqual(tv_event["stream_url"], "https://www.twitch.tv/egf_games")
+        self.assertEqual(
+            tv_event["notes"],
+            "Schloss Hundisburg · Weitere Streams: "
+            "https://www.twitch.tv/europeangofederation, "
+            "https://www.youtube.com/@JuppTube",
+        )
+
+    def test_page_without_video_stays_other_with_the_tournament_page(self):
+        raw = self.raw('<a href="https://www.dgob.de/">Ausschreibung</a>')
+        stream_map = {"by_dgob_id": {}, "by_category": {}}
+        tv_event = update_events.dgob_event_to_tv_event(raw, stream_map, {})
+        self.assertEqual(tv_event["platform"], "other")
+        self.assertEqual(tv_event["stream_url"], "https://www.dgob.de/x")
+
+
 class LoadDgobStreamMapTest(unittest.TestCase):
     def test_missing_file_returns_empty_map(self):
         result = update_events.load_dgob_stream_map(

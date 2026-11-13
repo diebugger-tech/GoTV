@@ -288,6 +288,45 @@ DGOB_MAX_PAGES = 50  # sanity bound against a pagination loop, not a real limit
 
 _DGOB_DT_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2})$")
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
+# Video links the DGoB event description itself names (href targets only,
+# e.g. the German Championship final 2026: "auf Twitch übertragen" ->
+# twitch.tv/egf_games). Twitch: a channel or /videos/<id>; YouTube: watch,
+# live, @handle, channel, youtu.be. Nothing else (e.g. a page that merely
+# mentions "KGS") is interpreted - verified 2026-11-13: no DGoB entry
+# names a KGS room, so no KGS field is derived here.
+_HREF_RE = re.compile(r"""href\s*=\s*["']([^"']+)["']""", re.I)
+_TWITCH_LINK_RE = re.compile(
+    r"^https?://(?:www\.)?twitch\.tv/(?!directory\b|search\b|p/)"
+    r"[A-Za-z0-9_]{3,25}/?$",
+    re.I,
+)
+_TWITCH_VIDEO_LINK_RE = re.compile(r"^https?://(?:www\.)?twitch\.tv/videos/\d+/?$", re.I)
+_YOUTUBE_LINK_RE = re.compile(
+    r"^https?://(?:(?:www|m)\.)?(?:youtube\.com/(?:watch\?v=[\w-]{6,}|live/[\w-]{6,}"
+    r"|@[\w.-]+|channel/[\w-]+)|youtu\.be/[\w-]{6,})[^\s]*$",
+    re.I,
+)
+
+
+def dgob_video_links(raw_event):
+    """Twitch/YouTube links (platform, url) from the event description's
+    href attributes, in document order, deduplicated. Empty if the page
+    names no video channel - such an entry stays a calendar-only
+    tournament page (platform "other"), never shown under Live."""
+    links, seen = [], set()
+    for href in _HREF_RE.findall(raw_event.get("description") or ""):
+        url = html.unescape(href).strip()
+        if url in seen:
+            continue
+        if _TWITCH_LINK_RE.match(url) or _TWITCH_VIDEO_LINK_RE.match(url):
+            platform = "twitch"
+        elif _YOUTUBE_LINK_RE.match(url):
+            platform = "youtube"
+        else:
+            continue
+        seen.add(url)
+        links.append((platform, url))
+    return links
 
 
 class DgobFetchError(Exception):
@@ -470,8 +509,20 @@ def dgob_event_to_tv_event(raw_event, stream_map, channels_by_id):
 
     venue = raw_event.get("venue")
     venue_name = venue.get("venue") if isinstance(venue, dict) else None
-    if venue_name:
-        tv_event["notes"] = venue_name
+    notes = [venue_name] if venue_name else []
+
+    # A video link named on the DGoB page itself wins over the channel map:
+    # it is the specific stream for this event. The first one becomes the
+    # stream; further ones are listed in the notes (no ranking guessed).
+    video_links = dgob_video_links(raw_event)
+    if video_links:
+        tv_event["platform"], tv_event["stream_url"] = video_links[0]
+        if len(video_links) > 1:
+            notes.append(
+                "Weitere Streams: " + ", ".join(url for _p, url in video_links[1:])
+            )
+    if notes:
+        tv_event["notes"] = " · ".join(notes)
 
     if channel_ref:
         tv_event["channel"] = channel_ref
