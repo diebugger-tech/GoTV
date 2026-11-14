@@ -1,0 +1,28 @@
+<!--
+Trimmed, hand-built sample mirroring the real row shape of
+https://www.eurogofed.org/grandprix/bt<year>/ (verified live 2026-11-14 -
+see update_events.py's EGF_CALENDAR_* section). Not a real downloaded
+page: tournament names/ids below are synthetic test fixtures, same
+convention as tools/testdata/twitch-egf-sample.ics's placeholder UUIDs.
+
+Covers, one row each:
+  1. a normal upcoming non-German tournament (must be imported)
+  2. an upcoming German tournament (must be skipped - DGOB_CATEGORIES/
+     hand-curation owns German entries, see EGF_CALENDAR_EXCLUDED_COUNTRIES)
+  3. a past tournament (class "egf-gp-past" - the row-selection regex
+     only ever matches "egf-gp-upcoming", so this must never be parsed)
+  4. an upcoming tournament with NO link around its name (observed for
+     real on the live "Grand Prix Finale" row - must be skipped with a
+     warning, not crash or invent a stream_url)
+  5. an upcoming tournament with an unparseable date range (must be
+     skipped with a warning, not guessed)
+-->
+<table class="table">
+<tbody>
+<tr class="egf-gp-satir egf-gp-upcoming" data-seviye="C" data-durum="upcoming" data-i="1"><td><a href="https://example-go-federation.test/sample-open" target="_blank" rel="noopener">Sample Open Go Championship 2026</a><br><span class="egf-gp-yer">Sampletown, Sampleland <img loading="lazy" decoding="async" class="egf-gp-bayrak" src="https://www.eurogofed.org/pics/flags/std/sample-flag.svg" alt="" width="18" height="13"></span></td><td>21 to 22 November 2026</td><td class="egf-gp-sev"><span class="egf-gp-sev-c">C</span></td><td></td></tr>
+<tr class="egf-gp-satir egf-gp-upcoming" data-seviye="C" data-durum="upcoming" data-i="2"><td><a href="https://example-go-bund.test/sample-cup" target="_blank" rel="noopener">Sample German Cup 2026</a><br><span class="egf-gp-yer">Samplestadt, Germany <img loading="lazy" decoding="async" class="egf-gp-bayrak" src="https://www.eurogofed.org/pics/flags/std/german-flag.svg" alt="" width="18" height="13"></span></td><td>28 to 29 November 2026</td><td class="egf-gp-sev"><span class="egf-gp-sev-c">C</span></td><td></td></tr>
+<tr class="egf-gp-satir egf-gp-past" data-seviye="C" data-durum="past" data-i="3"><td><a href="https://example-go-federation.test/past-open" target="_blank" rel="noopener">Sample Past Open 2026</a><br><span class="egf-gp-yer">Pastville, Sampleland <img loading="lazy" decoding="async" class="egf-gp-bayrak" src="https://www.eurogofed.org/pics/flags/std/sample-flag.svg" alt="" width="18" height="13"></span></td><td>5 to 6 September 2026</td><td class="egf-gp-sev"><span class="egf-gp-sev-c">C</span></td><td>Someone 7d (XX)</td></tr>
+<tr class="egf-gp-satir egf-gp-upcoming" data-seviye="Finale" data-durum="upcoming" data-i="4"><td>Sample Grand Prix Finale<br><span class="egf-gp-yer">Finaletown, Sampleland <img loading="lazy" decoding="async" class="egf-gp-bayrak" src="https://www.eurogofed.org/pics/flags/std/sample-flag.svg" alt="" width="18" height="13"></span></td><td>28 to 31 January 2027</td><td class="egf-gp-sev"><span class="egf-gp-sev-c">Finale</span></td><td></td></tr>
+<tr class="egf-gp-satir egf-gp-upcoming" data-seviye="C" data-durum="upcoming" data-i="5"><td><a href="https://example-go-federation.test/odd-dates" target="_blank" rel="noopener">Sample Odd Dates Open 2026</a><br><span class="egf-gp-yer">Oddtown, Sampleland <img loading="lazy" decoding="async" class="egf-gp-bayrak" src="https://www.eurogofed.org/pics/flags/std/sample-flag.svg" alt="" width="18" height="13"></span></td><td>Early December 2026</td><td class="egf-gp-sev"><span class="egf-gp-sev-c">C</span></td><td></td></tr>
+</tbody>
+</table>

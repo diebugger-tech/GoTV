@@ -57,6 +57,16 @@ jobs:
         run: |
           python3 tools/update_events.py --source twitch-egf --broadcaster-id 154830311 2>&1 | tee -a /tmp/dgob-workflow.log
 
+      # EGF Grand Prix circuit calendar (server-rendered HTML, no API -
+      # see tools/update_events.py's EGF_CALENDAR_* section). German
+      # entries are skipped by the importer itself (DGOB_CATEGORIES/
+      # hand-curation already owns them) - no overlap with the two steps
+      # above.
+      - name: Import EGF Grand Prix calendar
+        id: import_egf_calendar
+        run: |
+          python3 tools/update_events.py --source egf-calendar 2>&1 | tee -a /tmp/dgob-workflow.log
+
       # A broken/dead link must turn this run red, but must never block
       # the events.json update that already happened above - continued
       # below in "Commit and push" regardless of this step's result.
@@ -91,6 +101,7 @@ jobs:
           steps.tests.outcome == 'success' &&
           steps.import.outcome == 'success' &&
           steps.import_twitch.outcome == 'success' &&
+          steps.import_egf_calendar.outcome == 'success' &&
           steps.commit.outcome == 'success'
         run: |
           issue_number=$(gh issue list --search '"DGoB-Import fehlgeschlagen" in:title' --state open --json number --jq '.[0].number // empty')
@@ -105,6 +116,7 @@ jobs:
           (steps.tests.outcome == 'failure' ||
            steps.import.outcome == 'failure' ||
            steps.import_twitch.outcome == 'failure' ||
+           steps.import_egf_calendar.outcome == 'failure' ||
            steps.commit.outcome == 'failure')
         run: |
           gh label create tv-import --color ededed --description "DGoB-Import-Alarm" 2>/dev/null || true

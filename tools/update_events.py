@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Updater for public/tv/events.json, with two independent sources
+"""Updater for public/tv/events.json, with three independent sources
 selected via --source. Standard library only, by design (AGENTS.md).
 Both sources share the same read/merge/write path and the same
 idempotency contract (identical input -> byte-identical output); each
@@ -41,11 +41,26 @@ source only ever touches its own entries (events.json "source" field).
   below for the categories-filter-vs-pagination caveat and the all_day
   caveat, both confirmed live against the real API on 2026-11-13.
 
+--source egf-calendar: EGF Grand Prix circuit calendar (server-rendered
+  HTML table, no API - eurogofed.org exposes only the generic WP REST API,
+  no events-calendar namespace, verified 2026-11-14):
+    https://www.eurogofed.org/grandprix/bt<year>/
+  This is the curated ~11-tournament/year Bonus-Point circuit page, not
+  the much noisier "all 31 upcoming events from every EGF member country"
+  widget on the homepage - deliberately the smaller, higher-signal list.
+  German entries are skipped (EGF_CALENDAR_EXCLUDED_COUNTRIES): DGOB_
+  CATEGORIES (or hand-curation when that filter misses one, see commit
+  1e3f676) already owns them, so importing them here too would risk a
+  duplicate calendar entry for the same physical tournament. No video/
+  channel info exists on this page, so every entry is platform "other".
+
 Usage:
   python3 tools/update_events.py --source twitch-egf --broadcaster-id 123456789 --dry-run
   python3 tools/update_events.py --source twitch-egf --ics-file schedule.ics
   python3 tools/update_events.py --source dgob --dry-run
   python3 tools/update_events.py --source dgob
+  python3 tools/update_events.py --source egf-calendar --dry-run
+  python3 tools/update_events.py --source egf-calendar --egf-html-file page.html
 """
 import argparse
 import datetime
@@ -184,10 +199,10 @@ def fetch_ics_text(broadcaster_id):
         return res.read().decode("utf-8")
 
 
-def stable_id(ics_uid):
+def stable_id(raw_id, source=SOURCE):
     # Namespaced by source so it can never collide with a hand-maintained id.
-    slug = re.sub(r"[^a-zA-Z0-9]+", "-", ics_uid).strip("-").lower()
-    return SOURCE + "-" + slug
+    slug = re.sub(r"[^a-zA-Z0-9]+", "-", raw_id).strip("-").lower()
+    return source + "-" + slug
 
 
 def ics_event_to_tv_event(ics_event):
@@ -534,20 +549,20 @@ def _dgob_event_reference_date(tv_event):
     return datetime.date.fromisoformat(tv_event.get("date_end") or tv_event["date_start"])
 
 
-def merge_dgob_events(existing_events, fresh_tv_events, today_date):
-    """Same kept/added/updated contract as _merge_source_events, but the
-    removal rule is DGoB-specific (requirement 3): the API only ever
-    returns events from start_date forward, so a PAST dgob-* entry
-    missing from the fresh fetch is normal, not a vanished tournament -
-    it is dropped only once it is more than DGOB_RETENTION_DAYS past
-    (mirroring how groupEventsByTime's own archive window treats every
-    other source). A FUTURE dgob-* entry missing from the fresh fetch
-    really did disappear upstream (e.g. a cancelled tournament) and is
-    removed right away, same as any other source's vanished entry."""
-    kept = [e for e in existing_events if e.get("source") != DGOB_SOURCE]
-    old_by_id = {
-        e["id"]: e for e in existing_events if e.get("source") == DGOB_SOURCE
-    }
+def _merge_with_retention(
+    existing_events, fresh_tv_events, source, retention_days, today_date
+):
+    """Generic core behind merge_dgob_events (requirement 3 there): kept/
+    added/updated/removed, but a PAST entry missing from the fresh fetch
+    is only dropped once it is more than retention_days past (mirroring
+    groupEventsByTime's own archive window) - normal for any source whose
+    upstream API/page only ever lists events from "today" forward. A
+    FUTURE entry missing from the fresh fetch really did disappear
+    upstream (e.g. cancelled) and is removed right away. Shared by every
+    source with this same "upstream never lists the past" shape (dgob,
+    egf-calendar) - see merge_dgob_events / merge_egf_bt_events."""
+    kept = [e for e in existing_events if e.get("source") != source]
+    old_by_id = {e["id"]: e for e in existing_events if e.get("source") == source}
     fresh_by_id = {e["id"]: e for e in fresh_tv_events}
 
     added, updated, removed = [], [], []
@@ -563,7 +578,7 @@ def merge_dgob_events(existing_events, fresh_tv_events, today_date):
             continue
         reference_date = _dgob_event_reference_date(old_event)
         age_days = (today_date - reference_date).days
-        if age_days < 0 or age_days > DGOB_RETENTION_DAYS:
+        if age_days < 0 or age_days > retention_days:
             # still in the future (vanished upstream) or past retention
             removed.append(old_event)
         else:
@@ -573,6 +588,210 @@ def merge_dgob_events(existing_events, fresh_tv_events, today_date):
         list(fresh_by_id.values()) + retained_old, key=lambda e: e["date_start"]
     )
     return kept + merged_imported, added, updated, removed
+
+
+def merge_dgob_events(existing_events, fresh_tv_events, today_date):
+    """Same kept/added/updated contract as _merge_source_events, but the
+    removal rule is DGoB-specific (requirement 3): the API only ever
+    returns events from start_date forward, so a PAST dgob-* entry
+    missing from the fresh fetch is normal, not a vanished tournament -
+    see _merge_with_retention for the shared retention-window logic."""
+    return _merge_with_retention(
+        existing_events, fresh_tv_events, DGOB_SOURCE, DGOB_RETENTION_DAYS, today_date
+    )
+
+
+# ---------------------------------------------------------------------------
+# EGF Grand Prix circuit calendar (--source egf-calendar) - see module
+# docstring for the page URL. German entries are deliberately skipped: see
+# EGF_CALENDAR_EXCLUDED_COUNTRIES.
+# ---------------------------------------------------------------------------
+
+EGF_CALENDAR_SOURCE = "egf-calendar"
+EGF_CALENDAR_BASE_URL = "https://www.eurogofed.org/grandprix/bt{year}/"
+EGF_CALENDAR_RETENTION_DAYS = 90
+EGF_CALENDAR_USER_AGENT = (
+    "shinkgs-go-tv-egf-calendar-importer/1.0"
+    " (+https://github.com/diebugger-tech/shinkgs)"
+)
+# A German tournament already has a more authoritative, structured source
+# here (DGOB_CATEGORIES, or hand-curated when that filter misses one - see
+# commit 1e3f676, Berliner Kranich). Importing it again from this page too
+# would risk a second calendar entry for the same physical tournament under
+# a different id/source - so it is skipped here, not deduped after the fact.
+EGF_CALENDAR_EXCLUDED_COUNTRIES = {"Germany"}
+
+_EGF_CALENDAR_MONTHS = {
+    name: i
+    for i, name in enumerate(
+        [
+            "january", "february", "march", "april", "may", "june",
+            "july", "august", "september", "october", "november", "december",
+        ],
+        start=1,
+    )
+}
+# One upcoming-tournament row, e.g.:
+#   <tr class="egf-gp-satir egf-gp-upcoming" data-durum="upcoming" ...>
+#     <td><a href="...">NAME</a><br><span class="egf-gp-yer">CITY, COUNTRY
+#       <img ... class="egf-gp-bayrak" .../></span></td>
+#     <td>21 to 22 November 2026</td>
+#     <td class="egf-gp-sev"><span class="egf-gp-sev-c">C</span></td>
+#     <td>winner (empty for an upcoming tournament)</td>
+#   </tr>
+# Verified live 2026-11-14 against eurogofed.org/grandprix/bt2026/ - a past
+# tournament's row instead carries class "egf-gp-satir egf-gp-past", which
+# this regex does not match (only .egf-gp-upcoming rows are ever parsed).
+_EGF_CALENDAR_ROW_RE = re.compile(
+    r'<tr\s+class="egf-gp-satir\s+egf-gp-upcoming"[^>]*>(.*?)</tr>', re.S
+)
+_EGF_CALENDAR_CELLS_RE = re.compile(
+    r"<td>(.*?)</td>\s*<td>(.*?)</td>\s*<td[^>]*>(.*?)</td>\s*<td>(.*?)</td>", re.S
+)
+_EGF_CALENDAR_NAME_HREF_RE = re.compile(r'<a\s+href="([^"]+)"[^>]*>([^<]+)</a>', re.S)
+_EGF_CALENDAR_LOCATION_RE = re.compile(r'<span class="egf-gp-yer">([^<]*)<img', re.S)
+_EGF_CALENDAR_LEVEL_RE = re.compile(r'<span class="egf-gp-sev-c">([^<]*)</span>')
+# Every bt<year> row observed so far (2026 season) is a 1-3 day weekend
+# event within one month ("21 to 22 November 2026") - a cross-month shape
+# is not supported; such a row is skipped with a warning rather than
+# guessed (see parse_egf_calendar_html).
+_EGF_CALENDAR_DATE_RANGE_RE = re.compile(
+    r"^\s*(\d{1,2})\s+to\s+(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s*$"
+)
+
+
+def _egf_calendar_parse_date_range(text):
+    """'21 to 22 November 2026' -> ('2026-11-21', '2026-11-22'), or None if
+    the text doesn't match the single-month shape (see the regex's own
+    comment above) or names an invalid calendar date."""
+    m = _EGF_CALENDAR_DATE_RANGE_RE.match(html.unescape(text).strip())
+    if not m:
+        return None
+    day1, day2, month_name, year = m.groups()
+    month = _EGF_CALENDAR_MONTHS.get(month_name.strip().lower())
+    if not month:
+        return None
+    try:
+        start = datetime.date(int(year), month, int(day1))
+        end = datetime.date(int(year), month, int(day2))
+    except ValueError:
+        return None
+    return start.isoformat(), end.isoformat()
+
+
+def parse_egf_calendar_html(html_text):
+    """Parses every upcoming (.egf-gp-upcoming) row of an EGF Grand Prix
+    circuit page into raw dicts {"name", "url", "city", "country",
+    "date_start", "date_end", "level"}. A row that doesn't match the
+    expected cell/date/location shape is skipped with a stderr warning -
+    same "never guess, skip + log" policy as parse_ics's RRULE skip."""
+    raw_events = []
+    for row_match in _EGF_CALENDAR_ROW_RE.finditer(html_text):
+        row = row_match.group(1)
+        cells = _EGF_CALENDAR_CELLS_RE.search(row)
+        if not cells:
+            print(
+                "[update_events] Skipping EGF calendar row (unexpected cell"
+                " shape)",
+                file=sys.stderr,
+            )
+            continue
+        name_cell, date_cell, level_cell, _winner_cell = cells.groups()
+
+        name_href = _EGF_CALENDAR_NAME_HREF_RE.search(name_cell)
+        location = _EGF_CALENDAR_LOCATION_RE.search(name_cell)
+        if not name_href or not location:
+            print(
+                "[update_events] Skipping EGF calendar row (no name/link or"
+                " location): " + name_cell[:120],
+                file=sys.stderr,
+            )
+            continue
+        city_country = html.unescape(location.group(1)).strip()
+        city, _sep, country = city_country.rpartition(",")
+        city, country = city.strip(), country.strip()
+        if not city or not country:
+            print(
+                "[update_events] Skipping EGF calendar row (unparseable"
+                " location): " + city_country,
+                file=sys.stderr,
+            )
+            continue
+
+        date_range = _egf_calendar_parse_date_range(date_cell)
+        if not date_range:
+            print(
+                "[update_events] Skipping EGF calendar row (unparseable date"
+                " range): " + date_cell.strip(),
+                file=sys.stderr,
+            )
+            continue
+        date_start, date_end = date_range
+
+        level_match = _EGF_CALENDAR_LEVEL_RE.search(level_cell)
+        raw_events.append(
+            {
+                "name": html.unescape(name_href.group(2)).strip(),
+                "url": html.unescape(name_href.group(1)).strip(),
+                "city": city,
+                "country": country,
+                "date_start": date_start,
+                "date_end": date_end,
+                "level": html.unescape(level_match.group(1)).strip()
+                if level_match
+                else None,
+            }
+        )
+    return raw_events
+
+
+def egf_calendar_event_to_tv_event(raw):
+    """Maps one parse_egf_calendar_html() entry to the TvEvent shape.
+    platform is always "other" - this page names no video/channel at all,
+    just the tournament's own page."""
+    tv_event = {
+        "id": stable_id(
+            raw["name"] + "-" + raw["date_start"], source=EGF_CALENDAR_SOURCE
+        ),
+        "name": raw["name"],
+        "date_start": raw["date_start"],
+        "platform": "other",
+        "stream_url": raw["url"],
+        "region": "intl",
+        "source": EGF_CALENDAR_SOURCE,
+    }
+    if raw["date_end"] != raw["date_start"]:
+        tv_event["date_end"] = raw["date_end"]
+    notes = ["EGF Grand Prix Circuit"]
+    if raw.get("level"):
+        notes.append("Level " + raw["level"])
+    notes.append(raw["city"] + ", " + raw["country"])
+    tv_event["notes"] = " · ".join(notes)
+    return tv_event
+
+
+def fetch_egf_calendar_html(year, timeout=20):
+    url = EGF_CALENDAR_BASE_URL.format(year=year)
+    request = urllib.request.Request(
+        url, headers={"User-Agent": EGF_CALENDAR_USER_AGENT}
+    )
+    with urllib.request.urlopen(request, timeout=timeout) as res:
+        return res.read().decode("utf-8")
+
+
+def merge_egf_bt_events(existing_events, fresh_tv_events, today_date):
+    """Same kept/added/updated contract as _merge_source_events, with the
+    same retention-window removal rule as merge_dgob_events (see
+    _merge_with_retention) - the bt<year> page only ever lists .egf-gp-
+    upcoming rows, so a past tournament vanishing from the fresh parse is
+    normal, not a real removal."""
+    return _merge_with_retention(
+        existing_events,
+        fresh_tv_events,
+        EGF_CALENDAR_SOURCE,
+        EGF_CALENDAR_RETENTION_DAYS,
+        today_date,
+    )
 
 
 def _today_utc_str():
@@ -585,7 +804,7 @@ def main(argv=None):
     )
     parser.add_argument(
         "--source",
-        choices=[SOURCE, DGOB_SOURCE],
+        choices=[SOURCE, DGOB_SOURCE, EGF_CALENDAR_SOURCE],
         default=SOURCE,
         help="Which source to import from (default: %(default)s)",
     )
@@ -622,6 +841,26 @@ def main(argv=None):
         " seconds (default: %(default)s)",
     )
     parser.add_argument(
+        "--egf-year",
+        type=int,
+        help="--source " + EGF_CALENDAR_SOURCE + " only: which bt<year> page"
+        " to fetch (default: current year). The circuit's own finale"
+        " spills into the following January, so this rarely needs to"
+        " change.",
+    )
+    parser.add_argument(
+        "--egf-html-file",
+        help="--source " + EGF_CALENDAR_SOURCE + " only: path to a local"
+        " HTML file instead of fetching from eurogofed.org",
+    )
+    parser.add_argument(
+        "--egf-timeout",
+        type=float,
+        default=20,
+        help="--source " + EGF_CALENDAR_SOURCE + " only: per-request HTTP"
+        " timeout in seconds (default: %(default)s)",
+    )
+    parser.add_argument(
         "--events-file",
         default=str(EVENTS_JSON_PATH),
         help="Path to events.json (default: %(default)s)",
@@ -654,7 +893,7 @@ def main(argv=None):
         merged, added, updated, removed = merge_events(
             data.get("events", []), ics_events
         )
-    else:
+    elif args.source == DGOB_SOURCE:
         start_date = args.dgob_start_date or _today_utc_str()
         try:
             raw_events = fetch_dgob_events(start_date, timeout=args.dgob_timeout)
@@ -688,6 +927,45 @@ def main(argv=None):
                 "Refusing to import: this run would remove ALL %d existing"
                 " dgob-* entries - looks like an API/filter problem, not a"
                 " real emptying-out." % old_dgob_count,
+                file=sys.stderr,
+            )
+            return 1
+    else:
+        year = args.egf_year or datetime.date.today().year
+        if args.egf_html_file:
+            with open(args.egf_html_file, "r", encoding="utf-8") as f:
+                html_text = f.read()
+        else:
+            try:
+                html_text = fetch_egf_calendar_html(year, timeout=args.egf_timeout)
+            except (urllib.error.URLError, OSError) as err:
+                print("Failed to fetch EGF calendar: %s" % err, file=sys.stderr)
+                return 1
+
+        rows = parse_egf_calendar_html(html_text)
+        fresh_tv_events = [
+            egf_calendar_event_to_tv_event(r)
+            for r in rows
+            if r["country"] not in EGF_CALENDAR_EXCLUDED_COUNTRIES
+        ]
+
+        today_date = datetime.date.today()
+        merged, added, updated, removed = merge_egf_bt_events(
+            data.get("events", []), fresh_tv_events, today_date
+        )
+
+        old_egf_count = len(
+            [
+                e
+                for e in data.get("events", [])
+                if e.get("source") == EGF_CALENDAR_SOURCE
+            ]
+        )
+        if old_egf_count > 0 and len(removed) == old_egf_count:
+            print(
+                "Refusing to import: this run would remove ALL %d existing"
+                " egf-calendar-* entries - looks like a page/parser problem,"
+                " not a real emptying-out." % old_egf_count,
                 file=sys.stderr,
             )
             return 1

@@ -965,5 +965,344 @@ class DgobMainIntegrationTest(unittest.TestCase):
             )
 
 
+EGF_BT_FIXTURE_PATH = Path(__file__).resolve().parent / "testdata" / "egf-bt-sample.html"
+
+
+class EgfCalendarParseDateRangeTest(unittest.TestCase):
+    def test_parses_same_month_range(self):
+        self.assertEqual(
+            update_events._egf_calendar_parse_date_range("21 to 22 November 2026"),
+            ("2026-11-21", "2026-11-22"),
+        )
+
+    def test_rejects_unparseable_text(self):
+        self.assertIsNone(
+            update_events._egf_calendar_parse_date_range("Early December 2026")
+        )
+
+    def test_rejects_unknown_month_name(self):
+        self.assertIsNone(
+            update_events._egf_calendar_parse_date_range("21 to 22 Smarch 2026")
+        )
+
+    def test_rejects_invalid_calendar_date(self):
+        # November has 30 days.
+        self.assertIsNone(
+            update_events._egf_calendar_parse_date_range("30 to 31 November 2026")
+        )
+
+
+class ParseEgfCalendarHtmlTest(unittest.TestCase):
+    """Against the real-shaped fixture (EGF_BT_FIXTURE_PATH) - see its own
+    header comment for what each of the 5 rows is testing."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.html_text = EGF_BT_FIXTURE_PATH.read_text(encoding="utf-8")
+
+    def test_returns_only_upcoming_rows_that_parse_cleanly(self):
+        # 5 rows in the fixture: 1 normal + 1 German (both upcoming, both
+        # parse - country filtering is the caller's job, not the parser's),
+        # 1 past (never even matched - wrong class), 1 with no link, 1 with
+        # an unparseable date (both skipped + warned). -> exactly 2.
+        rows = update_events.parse_egf_calendar_html(self.html_text)
+        self.assertEqual(len(rows), 2)
+        names = {r["name"] for r in rows}
+        self.assertEqual(
+            names, {"Sample Open Go Championship 2026", "Sample German Cup 2026"}
+        )
+
+    def test_parses_the_normal_row_fully(self):
+        rows = update_events.parse_egf_calendar_html(self.html_text)
+        row = next(r for r in rows if r["name"] == "Sample Open Go Championship 2026")
+        self.assertEqual(row["url"], "https://example-go-federation.test/sample-open")
+        self.assertEqual(row["city"], "Sampletown")
+        self.assertEqual(row["country"], "Sampleland")
+        self.assertEqual(row["date_start"], "2026-11-21")
+        self.assertEqual(row["date_end"], "2026-11-22")
+        self.assertEqual(row["level"], "C")
+
+    def test_german_row_still_parses_here_for_the_caller_to_filter(self):
+        rows = update_events.parse_egf_calendar_html(self.html_text)
+        row = next(r for r in rows if r["name"] == "Sample German Cup 2026")
+        self.assertEqual(row["country"], "Germany")
+
+    def test_skips_a_past_row_silently(self):
+        rows = update_events.parse_egf_calendar_html(self.html_text)
+        self.assertFalse(any("Past" in r["name"] for r in rows))
+
+    def test_skips_a_row_with_no_link_and_warns(self):
+        out = io.StringIO()
+        with contextlib.redirect_stderr(out):
+            rows = update_events.parse_egf_calendar_html(self.html_text)
+        self.assertFalse(any("Finale" in r["name"] for r in rows))
+        self.assertIn("no name/link or location", out.getvalue())
+
+    def test_skips_a_row_with_an_unparseable_date_and_warns(self):
+        out = io.StringIO()
+        with contextlib.redirect_stderr(out):
+            rows = update_events.parse_egf_calendar_html(self.html_text)
+        self.assertFalse(any("Odd Dates" in r["name"] for r in rows))
+        self.assertIn("unparseable date range", out.getvalue())
+
+
+class EgfCalendarEventToTvEventTest(unittest.TestCase):
+    def setUp(self):
+        self.raw = {
+            "name": "Sample Open Go Championship 2026",
+            "url": "https://example-go-federation.test/sample-open",
+            "city": "Sampletown",
+            "country": "Sampleland",
+            "date_start": "2026-11-21",
+            "date_end": "2026-11-22",
+            "level": "C",
+        }
+
+    def test_maps_to_tv_event_shape(self):
+        tv_event = update_events.egf_calendar_event_to_tv_event(self.raw)
+        self.assertTrue(tv_event["id"].startswith("egf-calendar-"))
+        self.assertEqual(tv_event["name"], "Sample Open Go Championship 2026")
+        self.assertEqual(tv_event["date_start"], "2026-11-21")
+        self.assertEqual(tv_event["date_end"], "2026-11-22")
+        self.assertEqual(tv_event["platform"], "other")
+        self.assertEqual(
+            tv_event["stream_url"], "https://example-go-federation.test/sample-open"
+        )
+        self.assertEqual(tv_event["region"], "intl")
+        self.assertEqual(tv_event["source"], "egf-calendar")
+        self.assertIn("Sampletown, Sampleland", tv_event["notes"])
+
+    def test_omits_date_end_when_single_day(self):
+        self.raw["date_end"] = self.raw["date_start"]
+        tv_event = update_events.egf_calendar_event_to_tv_event(self.raw)
+        self.assertNotIn("date_end", tv_event)
+
+    def test_same_name_and_date_always_produces_the_same_id(self):
+        # Stability across runs matters: merge_egf_bt_events only works if
+        # the same real-world tournament gets the same id every time.
+        first = update_events.egf_calendar_event_to_tv_event(self.raw)
+        second = update_events.egf_calendar_event_to_tv_event(dict(self.raw))
+        self.assertEqual(first["id"], second["id"])
+
+
+class MergeEgfBtEventsTest(unittest.TestCase):
+    """Same retention-window contract as MergeDgobEventsTest, just for the
+    egf-calendar source - both now share _merge_with_retention."""
+
+    TODAY = datetime.date(2026, 11, 13)
+
+    def test_adds_new_entries(self):
+        fresh = [
+            {
+                "id": "egf-calendar-1",
+                "name": "A",
+                "date_start": "2026-12-01",
+                "platform": "other",
+                "stream_url": "https://x",
+                "region": "intl",
+                "source": "egf-calendar",
+            }
+        ]
+        merged, added, updated, removed = update_events.merge_egf_bt_events(
+            [], fresh, self.TODAY
+        )
+        self.assertEqual(len(added), 1)
+        self.assertEqual(updated, [])
+        self.assertEqual(removed, [])
+
+    def test_keeps_a_recent_past_entry_missing_from_the_fresh_fetch(self):
+        old_past = {
+            "id": "egf-calendar-1",
+            "name": "A",
+            "date_start": "2026-10-20",  # 24 days before TODAY, within 90
+            "platform": "other",
+            "stream_url": "https://x",
+            "region": "intl",
+            "source": "egf-calendar",
+        }
+        merged, added, updated, removed = update_events.merge_egf_bt_events(
+            [old_past], [], self.TODAY
+        )
+        self.assertEqual(removed, [])
+        self.assertIn(old_past, merged)
+
+    def test_removes_a_future_entry_that_vanished_upstream(self):
+        old_future = {
+            "id": "egf-calendar-1",
+            "name": "A",
+            "date_start": "2026-12-01",
+            "platform": "other",
+            "stream_url": "https://x",
+            "region": "intl",
+            "source": "egf-calendar",
+        }
+        merged, added, updated, removed = update_events.merge_egf_bt_events(
+            [old_future], [], self.TODAY
+        )
+        self.assertEqual(removed, [old_future])
+
+    def test_leaves_entries_from_a_different_source_untouched(self):
+        dgob_entry = {
+            "id": "dgob-1",
+            "name": "B",
+            "date_start": "2026-12-01",
+            "platform": "other",
+            "stream_url": "https://x",
+            "region": "de",
+            "source": "dgob",
+        }
+        merged, added, updated, removed = update_events.merge_egf_bt_events(
+            [dgob_entry], [], self.TODAY
+        )
+        self.assertIn(dgob_entry, merged)
+
+
+class EgfCalendarMainIntegrationTest(unittest.TestCase):
+    """main() --source egf-calendar end-to-end, via --egf-html-file (no
+    real HTTP call) - mirrors DgobMainIntegrationTest."""
+
+    def test_dry_run_prints_diff_and_writes_nothing_and_excludes_germany(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            events_path = Path(tmp) / "events.json"
+            original = {"events": [], "channels": []}
+            events_path.write_text(json.dumps(original), encoding="utf-8")
+
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                exit_code = update_events.main(
+                    [
+                        "--source",
+                        "egf-calendar",
+                        "--events-file",
+                        str(events_path),
+                        "--egf-html-file",
+                        str(EGF_BT_FIXTURE_PATH),
+                        "--dry-run",
+                    ]
+                )
+            self.assertEqual(exit_code, 0)
+            # Only the non-German row survives the country filter.
+            self.assertIn("Would add 1 event(s):", out.getvalue())
+            self.assertIn("Sample Open Go Championship 2026", out.getvalue())
+            self.assertNotIn("Sample German Cup 2026", out.getvalue())
+            self.assertEqual(
+                json.loads(events_path.read_text(encoding="utf-8")), original
+            )
+
+    def test_writes_egf_calendar_events_and_sets_region_intl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            events_path = Path(tmp) / "events.json"
+            events_path.write_text(
+                json.dumps({"events": [], "channels": []}), encoding="utf-8"
+            )
+            exit_code = update_events.main(
+                [
+                    "--source",
+                    "egf-calendar",
+                    "--events-file",
+                    str(events_path),
+                    "--egf-html-file",
+                    str(EGF_BT_FIXTURE_PATH),
+                ]
+            )
+            self.assertEqual(exit_code, 0)
+            written = json.loads(events_path.read_text(encoding="utf-8"))
+            egf_events = [e for e in written["events"] if e["source"] == "egf-calendar"]
+            self.assertEqual(len(egf_events), 1)
+            self.assertEqual(egf_events[0]["region"], "intl")
+
+    def test_second_run_against_the_same_data_is_a_no_op(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            events_path = Path(tmp) / "events.json"
+            events_path.write_text(
+                json.dumps({"events": [], "channels": []}), encoding="utf-8"
+            )
+            args = [
+                "--source",
+                "egf-calendar",
+                "--events-file",
+                str(events_path),
+                "--egf-html-file",
+                str(EGF_BT_FIXTURE_PATH),
+            ]
+            update_events.main(args)
+            after_first = events_path.read_text(encoding="utf-8")
+
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                exit_code = update_events.main(args)
+            after_second = events_path.read_text(encoding="utf-8")
+
+            self.assertEqual(exit_code, 0)
+            self.assertIn("No changes.", out.getvalue())
+            self.assertEqual(after_first, after_second)
+
+    def test_leaves_manual_and_other_source_events_untouched(self):
+        manual_event = {
+            "id": "deepmind-lee-sedol-2016-game1",
+            "name": "AlphaGo vs Lee Sedol",
+            "date_start": "2016-03-09",
+            "platform": "youtube",
+            "stream_url": "https://www.youtube.com/watch?v=vFr3K2DORc8",
+            "video_id": "vFr3K2DORc8",
+        }
+        dgob_event = {
+            "id": "dgob-1",
+            "name": "Go-Bundesliga",
+            "date_start": "2026-12-01",
+            "platform": "other",
+            "stream_url": "https://www.go-bundesliga.de/",
+            "region": "de",
+            "source": "dgob",
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            events_path = Path(tmp) / "events.json"
+            events_path.write_text(
+                json.dumps({"events": [manual_event, dgob_event], "channels": []}),
+                encoding="utf-8",
+            )
+            update_events.main(
+                [
+                    "--source",
+                    "egf-calendar",
+                    "--events-file",
+                    str(events_path),
+                    "--egf-html-file",
+                    str(EGF_BT_FIXTURE_PATH),
+                ]
+            )
+            written = json.loads(events_path.read_text(encoding="utf-8"))
+            self.assertIn(manual_event, written["events"])
+            self.assertIn(dgob_event, written["events"])
+
+    def test_fetch_failure_leaves_the_file_untouched_and_exits_nonzero(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            events_path = Path(tmp) / "events.json"
+            original = {"events": [], "channels": []}
+            events_path.write_text(json.dumps(original), encoding="utf-8")
+
+            with mock.patch.object(
+                update_events,
+                "fetch_egf_calendar_html",
+                side_effect=update_events.urllib.error.URLError("boom"),
+            ):
+                out = io.StringIO()
+                with contextlib.redirect_stderr(out):
+                    exit_code = update_events.main(
+                        [
+                            "--source",
+                            "egf-calendar",
+                            "--events-file",
+                            str(events_path),
+                            "--egf-year",
+                            "2026",
+                        ]
+                    )
+            self.assertEqual(exit_code, 1)
+            self.assertEqual(
+                json.loads(events_path.read_text(encoding="utf-8")), original
+            )
+
+
 if __name__ == "__main__":
     unittest.main()
