@@ -10,6 +10,16 @@
       "notes": "Beispiel-Event mit einbettbarem Video (offizieller Google-DeepMind-Kanal): kompletter Livestream von Spiel 1 des Google-DeepMind-Challenge-Match 2016, Kommentar von Michael Redmond (9p) und Chris Garlock."
     },
     {
+      "id": "berliner-kranich-2026",
+      "name": "46. Berliner Kranich",
+      "date_start": "2026-11-21",
+      "date_end": "2026-11-22",
+      "platform": "other",
+      "stream_url": "https://ini.hu-berlin.de/go/kranich/DE/ausschreibung.php",
+      "region": "de",
+      "notes": "Internationales Alexander-Kurz-Gedenkturnier, Pokalturnier des Deutschen Go-Bundes, Humboldt-Universität Berlin. Kein Online-Stream bestätigt - Ausschreibung nennt nur Vor-Ort-Kommentierung. Läuft bei DGoB unter Kategorie 'deutschlandpokal', nicht unter den vom Importer gezogenen 3 Kategorien (go-bundesliga/online-turnier/deutsche-meisterschaft) - deshalb von Hand statt automatisch."
+    },
+    {
       "id": "egf-hungarian-open-2026",
       "name": "Hungarian Open Go Championship 2026",
       "date_start": "2026-11-21",
