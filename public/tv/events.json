@@ -8,6 +8,36 @@
       "stream_url": "https://www.youtube.com/watch?v=vFr3K2DORc8",
       "video_id": "vFr3K2DORc8",
       "notes": "Beispiel-Event mit einbettbarem Video (offizieller Google-DeepMind-Kanal): kompletter Livestream von Spiel 1 des Google-DeepMind-Challenge-Match 2016, Kommentar von Michael Redmond (9p) und Chris Garlock."
+    },
+    {
+      "id": "egf-hungarian-open-2026",
+      "name": "Hungarian Open Go Championship 2026",
+      "date_start": "2026-11-21",
+      "date_end": "2026-11-22",
+      "platform": "other",
+      "stream_url": "https://goszovetseg.hu/?page=competition&mode=readid&compid=1098",
+      "region": "intl",
+      "notes": "EGF Grand Prix Bonus C, Budapest. Kein Stream bestätigt - EGF-Kommentar ist ein kostenpflichtiges Zusatzangebot der Veranstalter, laut Ankündigung hier nicht gebucht."
+    },
+    {
+      "id": "velika-gorica-2026",
+      "name": "10. Velika Gorica City Day Tournament",
+      "date_start": "2026-12-12",
+      "date_end": "2026-12-13",
+      "platform": "other",
+      "stream_url": "https://gkvg.hr/",
+      "region": "intl",
+      "notes": "EGF Grand Prix Bonus C, Kroatien (bei Zagreb). Kein Live-Stream bestätigt - auf der Veranstalterseite nur ein Einladungs-Promo-Video vom Juli 2026."
+    },
+    {
+      "id": "grand-prix-zoledowo-2026",
+      "name": "PPiK – Grand Prix – Żołędowo 2026",
+      "date_start": "2026-12-05",
+      "date_end": "2026-12-06",
+      "platform": "other",
+      "stream_url": "https://roundsboard.com/tournaments/ppik-gp-2026",
+      "region": "intl",
+      "notes": "EGF-Turnierkalender, Żołędowo bei Bydgoszcz (Polen). Kein Stream bestätigt."
     }
   ],
   "channels": [
