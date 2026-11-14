@@ -20,26 +20,6 @@
       "notes": "Internationales Alexander-Kurz-Gedenkturnier, Pokalturnier des Deutschen Go-Bundes, Humboldt-Universität Berlin. Kein Online-Stream bestätigt - Ausschreibung nennt nur Vor-Ort-Kommentierung. Läuft bei DGoB unter Kategorie 'deutschlandpokal', nicht unter den vom Importer gezogenen 3 Kategorien (go-bundesliga/online-turnier/deutsche-meisterschaft) - deshalb von Hand statt automatisch."
     },
     {
-      "id": "egf-hungarian-open-2026",
-      "name": "Hungarian Open Go Championship 2026",
-      "date_start": "2026-11-21",
-      "date_end": "2026-11-22",
-      "platform": "other",
-      "stream_url": "https://goszovetseg.hu/?page=competition&mode=readid&compid=1098",
-      "region": "intl",
-      "notes": "EGF Grand Prix Bonus C, Budapest. Kein Stream bestätigt - EGF-Kommentar ist ein kostenpflichtiges Zusatzangebot der Veranstalter, laut Ankündigung hier nicht gebucht."
-    },
-    {
-      "id": "velika-gorica-2026",
-      "name": "10. Velika Gorica City Day Tournament",
-      "date_start": "2026-12-12",
-      "date_end": "2026-12-13",
-      "platform": "other",
-      "stream_url": "https://gkvg.hr/",
-      "region": "intl",
-      "notes": "EGF Grand Prix Bonus C, Kroatien (bei Zagreb). Kein Live-Stream bestätigt - auf der Veranstalterseite nur ein Einladungs-Promo-Video vom Juli 2026."
-    },
-    {
       "id": "grand-prix-zoledowo-2026",
       "name": "PPiK – Grand Prix – Żołędowo 2026",
       "date_start": "2026-12-05",
@@ -381,6 +361,28 @@
         "id": "europeangofederation"
       },
       "source": "twitch-egf"
+    },
+    {
+      "id": "egf-calendar-hungarian-open-go-championship-2026-2026-11-21",
+      "name": "Hungarian Open Go Championship 2026",
+      "date_start": "2026-11-21",
+      "platform": "other",
+      "stream_url": "https://goszovetseg.hu/?page=competition&mode=readid&compid=1098",
+      "region": "intl",
+      "source": "egf-calendar",
+      "date_end": "2026-11-22",
+      "notes": "EGF Grand Prix Circuit · Level C · Budapest, Hungary"
+    },
+    {
+      "id": "egf-calendar-10th-velika-gorica-city-day-go-tournament-2026-12-12",
+      "name": "10th Velika Gorica City Day Go Tournament",
+      "date_start": "2026-12-12",
+      "platform": "other",
+      "stream_url": "https://gkvg.hr/",
+      "region": "intl",
+      "source": "egf-calendar",
+      "date_end": "2026-12-13",
+      "notes": "EGF Grand Prix Circuit · Level C · Velika Gorica, Croatia"
     }
   ],
   "channels": [
