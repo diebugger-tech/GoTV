@@ -190,16 +190,20 @@ Policy, von dir als "Stufe 1" bezeichnet:
 ### Umsetzungsstand
 - [x] Schritt 1: `event`-Flag ist im KGS-Protokoll vorhanden und wird bereits
       eingelesen (verifiziert, nicht neu gebaut).
-- [ ] Schritt 2: Live-Filter tatsächlich auf `game.event === true` + Kalender-Live
-      anwenden. **Noch nicht gebaut** — TV → Live zeigt aktuell weiterhin ALLE
-      aktiven Partien, Rang-sortiert; der "Dan only"-Filter steckt noch im Code
-      und soll mit diesem Schritt entfernt werden.
-- [ ] Schritt 3: Leerzustand "Gerade keine Übertragung" + nächstes Kalender-Event
-      + Link auf die KGS-Event-Seite, wenn nichts live ist.
-- [ ] Schritt 4: Stream neben dem Brett via `kgs_room`/`kgs_players`.
-- [ ] Schritt 5: "Nachspielen"-Vorschlag nach Partieende.
-- [ ] `TvSource`-Interface mit `KgsTvSource` als eigene Abstraktion herauslösen
-      (aktuell liest die UI direkt auf KgsClient-Daten).
+- [x] Schritt 2: Live-Filter auf `game.event === true` + Kalender-Live.
+      `KgsTvSource.getLiveBroadcasts` (`src/model/TvSource.js`), `TvScreen.js`
+      zeigt nur noch `broadcasts` — kein "alle aktiven Partien"-Fallback mehr,
+      "Dan only"-Filter nirgends mehr im Code (verifiziert per grep, nicht nur
+      behauptet).
+- [x] Schritt 3: Leerzustand "Gerade keine Übertragung" + nächstes Kalender-Event
+      + "Zum Kalender"-Button, wenn nichts live ist (`TvScreen.js:124-141`).
+- [x] Schritt 4: Stream neben dem Brett via `kgs_room`/`kgs_players`
+      (`tv.js` `getLiveEventForGame`, von `TvSource` genutzt).
+- [x] Schritt 5: "Nachspielen"-Vorschlag nach Partieende
+      (`GameReplaySuggestion.js` + `GameScreen.js:347`, an `isGameOverNode`).
+- [x] `TvSource`-Interface mit `KgsTvSource` als eigene Abstraktion
+      herausgelöst (`src/model/TvSource.js`, `kgsTvSource`) — `TvScreen` liest
+      nicht mehr direkt auf KgsClient-Daten.
 
 ## Roadmap
 
