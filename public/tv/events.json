@@ -38,6 +38,339 @@
       "stream_url": "https://roundsboard.com/tournaments/ppik-gp-2026",
       "region": "intl",
       "notes": "EGF-Turnierkalender, Żołędowo bei Bydgoszcz (Polen). Kein Stream bestätigt."
+    },
+    {
+      "id": "dgob-22103",
+      "name": "Deutsche Damen-Go-Meisterschaft 2026",
+      "date_start": "2026-11-14",
+      "platform": "other",
+      "stream_url": "https://www.dgob.de/turniere/deutsche-damen-go-meisterschaft-2026/",
+      "region": "de",
+      "source": "dgob",
+      "date_end": "2026-11-15",
+      "notes": "Stadtteilzentrum Vorderer Westen / Kassel"
+    },
+    {
+      "id": "dgob-10002873",
+      "name": "Go-Bundesliga",
+      "date_start": "2026-11-19",
+      "platform": "other",
+      "stream_url": "https://www.go-bundesliga.de/",
+      "region": "de",
+      "source": "dgob",
+      "start": "2026-11-19T19:00:00Z",
+      "notes": "Online (OGS, KGS, Telegram, Discord)"
+    },
+    {
+      "id": "dgob-10002874",
+      "name": "Go-Bundesliga",
+      "date_start": "2026-12-17",
+      "platform": "other",
+      "stream_url": "https://www.go-bundesliga.de/",
+      "region": "de",
+      "source": "dgob",
+      "start": "2026-12-17T19:00:00Z",
+      "notes": "Online (OGS, KGS, Telegram, Discord)"
+    },
+    {
+      "id": "dgob-10002875",
+      "name": "Go-Bundesliga",
+      "date_start": "2027-01-21",
+      "platform": "other",
+      "stream_url": "https://www.go-bundesliga.de/",
+      "region": "de",
+      "source": "dgob",
+      "start": "2027-01-21T19:00:00Z",
+      "notes": "Online (OGS, KGS, Telegram, Discord)"
+    },
+    {
+      "id": "dgob-10002876",
+      "name": "Go-Bundesliga",
+      "date_start": "2027-02-18",
+      "platform": "other",
+      "stream_url": "https://www.go-bundesliga.de/",
+      "region": "de",
+      "source": "dgob",
+      "start": "2027-02-18T19:00:00Z",
+      "notes": "Online (OGS, KGS, Telegram, Discord)"
+    },
+    {
+      "id": "dgob-10002877",
+      "name": "Go-Bundesliga",
+      "date_start": "2027-03-18",
+      "platform": "other",
+      "stream_url": "https://www.go-bundesliga.de/",
+      "region": "de",
+      "source": "dgob",
+      "start": "2027-03-18T19:00:00Z",
+      "notes": "Online (OGS, KGS, Telegram, Discord)"
+    },
+    {
+      "id": "dgob-10002878",
+      "name": "Go-Bundesliga",
+      "date_start": "2027-04-15",
+      "platform": "other",
+      "stream_url": "https://www.go-bundesliga.de/",
+      "region": "de",
+      "source": "dgob",
+      "start": "2027-04-15T20:00:00Z",
+      "notes": "Online (OGS, KGS, Telegram, Discord)"
+    },
+    {
+      "id": "dgob-10002879",
+      "name": "Go-Bundesliga",
+      "date_start": "2027-05-13",
+      "platform": "other",
+      "stream_url": "https://www.go-bundesliga.de/",
+      "region": "de",
+      "source": "dgob",
+      "start": "2027-05-13T18:00:00Z",
+      "notes": "Online (OGS, KGS, Telegram, Discord)"
+    },
+    {
+      "id": "dgob-23400",
+      "name": "HPM 2027 mit Deutscher Schul-Go-Mannschaftsmeisterschaft",
+      "date_start": "2027-09-25",
+      "platform": "other",
+      "stream_url": "https://www.dgob.de/turniere/hpm-2027-mit-deutscher-schul-go-mannschaftsmeisterschaft/",
+      "region": "de",
+      "source": "dgob",
+      "date_end": "2027-09-26",
+      "notes": "Elisabeth-Selbert-Gymnasium"
+    },
+    {
+      "id": "twitch-egf-92acf253-eba9-4ef3-b38f-66f82cf715f5",
+      "name": "European Student Go Championship | Review by Mateusz Surma 4p | R3",
+      "date_start": "2026-09-19",
+      "start": "2026-09-19T15:00:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-e04cb7a9-3370-4348-9815-4b053abc5e3a",
+      "name": "European Student Go Championship | Review by Mateusz Surma 4p | R2",
+      "date_start": "2026-09-19",
+      "start": "2026-09-19T12:30:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-6bcc6ac9-c589-487c-a412-0beaa8128e51",
+      "name": "European Women's Go Championship R1 | Live with Mateusz Surma 4p",
+      "date_start": "2026-10-03",
+      "start": "2026-10-03T13:40:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-ef7334e7-bc08-445e-8f64-599e883893a5",
+      "name": "European Women's Go Championship R2 | Live with Mateusz Surma 4p",
+      "date_start": "2026-10-03",
+      "start": "2026-10-03T17:10:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-f59e40eb-540b-4f62-85b7-02492f3a1703",
+      "name": "European Women's Go Championship R3 | Live with Mateusz Surma 4p",
+      "date_start": "2026-10-03",
+      "start": "2026-10-03T20:10:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-2f0efc25-3046-43f4-aef9-132cdbf68011",
+      "name": "European Women's Go Championship R5 | Live with Andrii Kravets 4p",
+      "date_start": "2026-10-04",
+      "start": "2026-10-04T15:10:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-cb238cda-b0cf-4753-933e-39a626d2bd0f",
+      "name": "European Women's Go Championship R4 | Live with Andrii Kravets 4p",
+      "date_start": "2026-10-04",
+      "start": "2026-10-04T11:40:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-2f93eadc-9d9b-485b-9019-39af40543f2f",
+      "name": "Review party with Ali Jabarin 3p | Pandanet Go European Team Championship",
+      "date_start": "2026-10-13",
+      "start": "2026-10-13T20:20:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-1f79f1e7-317c-481e-895e-3f2bfe37bfb5",
+      "name": "German Championship 2026 R2 with Andrii Kravets 4p",
+      "date_start": "2026-10-22",
+      "start": "2026-10-22T17:00:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-528488a1-e7b2-4817-b149-5b7e92b10f14",
+      "name": "German Championship 2026 R1 with Andrii Kravets 4p",
+      "date_start": "2026-10-22",
+      "start": "2026-10-22T11:00:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-1825fb2e-3c72-40f6-9a8e-6fecb4904cf1",
+      "name": "German Championship 2026 R4 with Andrii Kravets 4p",
+      "date_start": "2026-10-23",
+      "start": "2026-10-23T17:00:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-1cc0b86b-c458-4c56-b86a-860853b21f4d",
+      "name": "German Championship 2026 R3 with Andrii Kravets 4p",
+      "date_start": "2026-10-23",
+      "start": "2026-10-23T11:00:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-e88c3108-1f2c-4a02-84ec-86b1aa4af367",
+      "name": "German Championship 2026 R6 with Andrii Kravets 4p",
+      "date_start": "2026-10-24",
+      "start": "2026-10-24T17:00:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-fd1699ae-a740-4418-923d-09eab8627a49",
+      "name": "German Championship 2026 R5 with Andrii Kravets 4p",
+      "date_start": "2026-10-24",
+      "start": "2026-10-24T11:00:00+02:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-99c970ca-652e-4e48-828f-18e9c5a3bf46",
+      "name": "German Championship 2026 R7 with Andrii Kravets 4p",
+      "date_start": "2026-10-25",
+      "start": "2026-10-25T11:00:00+01:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-b24bbdfe-e392-4305-b52d-e59799c2035b",
+      "name": "Speed Go Championship | Artem Kachanovskyi 3p vs  Rémi Campagnie 6d | Live with Lukas Kraemer 6d",
+      "date_start": "2026-11-01",
+      "start": "2026-11-01T18:00:00+01:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-0bb5bceb-45b7-4033-aefd-e322214a28b7",
+      "name": "Speed Go Championship | Ali Jabarin 3p vs Tanguy Le Calvé 2p | Live with Valerii Krushelnytskyi 7d - powered by Factorio",
+      "date_start": "2026-11-08",
+      "start": "2026-11-08T18:00:00+01:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-e1b703d1-510f-4555-a6a9-911f13a10e1c",
+      "name": "Pandanet Go European Team Championship - live with Ali Jabarin 3p",
+      "date_start": "2026-11-10",
+      "start": "2026-11-10T20:40:00+01:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
     }
   ],
   "channels": [
