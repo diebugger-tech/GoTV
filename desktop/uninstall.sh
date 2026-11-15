@@ -1,4 +1,4 @@
-# uninstall.sh - Entfernt die Go TV Desktop-App des aktuellen Nutzers.
+# uninstall.sh - Entfernt die GoTV Desktop-App des aktuellen Nutzers.
 # Kein Shebang und kein Ausrufezeichen (Regel: zsh History Expansion).
 # Aufruf: sh desktop/uninstall.sh   (kein sudo)
 
@@ -6,7 +6,7 @@ set -u
 
 HOME_DIR="$HOME"
 
-echo "Go TV Desktop-Deinstallation"
+echo "GoTV Desktop-Deinstallation"
 
 # Laufenden lokalen Server beenden, falls vorhanden.
 if pgrep -f "desktop/goTV_local.py" > /dev/null 2>&1; then

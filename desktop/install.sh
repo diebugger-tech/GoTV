@@ -1,4 +1,4 @@
-# install.sh - Installiert die Go TV Desktop-App fuer den aktuellen Nutzer.
+# install.sh - Installiert die GoTV Desktop-App fuer den aktuellen Nutzer.
 # Kein Shebang und kein Ausrufezeichen (Regel: zsh History Expansion).
 # Aufruf: sh desktop/install.sh   (kein sudo, keine Systemdateien)
 
@@ -7,7 +7,7 @@ set -u
 HOME_DIR="$HOME"
 ROOT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
-echo "Go TV Desktop-Installation (Repo: $ROOT_DIR)"
+echo "GoTV Desktop-Installation (Repo: $ROOT_DIR)"
 
 if command -v python3 > /dev/null 2>&1; then
   :
@@ -71,7 +71,7 @@ if command -v gtk-update-icon-cache > /dev/null 2>&1; then
 fi
 
 echo "4/4 Fertig."
-echo "  App-Auswahl:  'Go TV'"
+echo "  App-Auswahl:  'GoTV'"
 echo "  Launcher:     $HOME_DIR/.local/bin/launch-gotv"
 echo "  Desktop-File: $HOME_DIR/.local/share/applications/gotv.desktop"
 echo "  Server-Log:   $HOME_DIR/.local/share/gotv/server.log"

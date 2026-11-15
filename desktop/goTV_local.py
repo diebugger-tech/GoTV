@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""goTV_local.py - Local server for the Go TV desktop app.
+"""goTV_local.py - Local server for the GoTV desktop app.
 
 Serves the production build (build-desktop/) on 127.0.0.1 only, so the app
 can run in a browser window without any remote exposure.
@@ -273,7 +273,7 @@ class ThreadingServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="Go TV local server")
+    parser = argparse.ArgumentParser(description="GoTV local server")
     parser.add_argument(
         "--build",
         default=os.environ.get("GOTV_BUILD_DIR", DEFAULT_BUILD_DIR),
@@ -298,7 +298,7 @@ def main(argv=None):
     GoTvHandler.build_dir = build_dir
     server = ThreadingServer(("127.0.0.1", args.port), GoTvHandler)
     sys.stderr.write(
-        "Go TV local server: http://127.0.0.1:%d (build: %s, 127.0.0.1 only)\n"
+        "GoTV local server: http://127.0.0.1:%d (build: %s, 127.0.0.1 only)\n"
         % (args.port, build_dir)
     )
     try:

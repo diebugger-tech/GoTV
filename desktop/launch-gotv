@@ -1,4 +1,4 @@
-# launch-gotv - Startet die Go TV Desktop-App.
+# launch-gotv - Startet die GoTV Desktop-App.
 # Kein Shebang und kein Ausrufezeichen im Skript (Regel: zsh History Expansion).
 # Wird von sh/zsh ueber den ENOEXEC-Fallback bzw. ueber /bin/sh ausgefuehrt.
 
@@ -98,7 +98,7 @@ else
   if server_running; then
     :
   else
-    echo "Go TV Server startet nicht."
+    echo "GoTV Server startet nicht."
     echo "Log: $DATA_DIR/server.log"
     exit 1
   fi
