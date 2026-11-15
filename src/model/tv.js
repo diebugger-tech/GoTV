@@ -679,14 +679,23 @@ export type TvBroadcast = {
 // TV -> Live: every broadcast that is live right now AND has a video channel,
 // each with the KGS boards relayed for it (may be none - e.g. an
 // international tournament shown on YouTube only). KGS event games that
-// match no broadcast are not part of Live.
+// match no broadcast are not part of Live. Keep finished boards still present
+// in the list so the card can show their status during the live broadcast.
 export function getLiveBroadcasts(
   games: Array<GameChannel>,
   events: Array<TvEvent>,
   roomsById: Index<Room>,
   now: Date
 ): Array<TvBroadcast> {
-  let eventGames = getLiveEventGames(games);
+  let eventGames = games.filter(
+    (game) =>
+      game.event &&
+      !game.deletedTime &&
+      REAL_GAME_TYPES.indexOf(game.type) !== -1 &&
+      game.players &&
+      game.players.black &&
+      game.players.white
+  );
   return getLiveEvents(events, now)
     .filter(hasVideoStream)
     .map((event) => ({

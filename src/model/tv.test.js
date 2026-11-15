@@ -887,6 +887,22 @@ describe("getLiveBroadcasts", () => {
     expect(getLiveBroadcasts(games, events, {}, now)[0].games).toEqual([]);
   });
 
+  it("keeps finished boards for status display while the broadcast is live", () => {
+    let games = [
+      game(1, "a", "b"),
+      game(2, "a", "c", { over: true }),
+      game(3, "a", "d", { over: true, event: false }),
+      game(4, "a", "e", { over: true, deletedTime: 1 }),
+      game(5, "a", "f", { over: true, type: "demonstration" }),
+      game(6, "a", "g", { players: { black: makeUser("a", 5) } }),
+    ];
+    let events = [live("cup", { kgs_players: ["a"] })];
+    expect(
+      getLiveBroadcasts(games, events, {}, now)[0].games.map((g) => g.id)
+    ).toEqual([1, 2]);
+    expect(getLiveEventGames(games).some((g) => g.over)).toBe(false);
+  });
+
   it("is empty when nothing is live", () => {
     expect(
       getLiveBroadcasts([], [live("cup")], {}, new Date("2026-01-01T12:00:00"))

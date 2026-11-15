@@ -180,6 +180,12 @@
   }
 
   &-boards {
+    &-status {
+      padding: 6px 10px;
+      font-size: 13px;
+      color: $semi-muted;
+    }
+
     &-title {
       padding: 6px 10px;
       font-size: 13px;
