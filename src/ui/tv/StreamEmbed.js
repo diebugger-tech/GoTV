@@ -12,6 +12,7 @@ type Props = {
   event?: TvEvent,
   channel?: TvChannel,
   url?: string,
+  onLoad?: () => any,
 };
 
 type State = {
@@ -145,5 +146,8 @@ export default class StreamEmbed extends Component<Props, State> {
 
   _onLoad = () => {
     this.setState({ loaded: true });
+    if (this.props.onLoad) {
+      this.props.onLoad();
+    }
   };
 }

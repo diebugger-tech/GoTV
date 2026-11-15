@@ -2,7 +2,10 @@
 import React, { PureComponent as Component } from "react";
 import CalendarView from "./tv/CalendarView";
 import BroadcastCard from "./tv/BroadcastCard";
-import { formatEventDateRange } from "./tv/CalendarEventCard";
+import CalendarEventCard, {
+  formatEventDateRange,
+} from "./tv/CalendarEventCard";
+import ChannelCard from "./tv/ChannelCard";
 import StreamEmbed from "./tv/StreamEmbed";
 import SgfReplayView from "./tv/SgfReplayView";
 import { A, TabNav } from "./common";
@@ -10,16 +13,27 @@ import {
   getNextUpcomingEvent,
   fetchTvEvents,
   validateTvEvent,
+  getBroadcastForStream,
 } from "../model/tv";
 import { kgsTvSource } from "../model/TvSource";
-import type { TvEvent } from "../model/tv";
-import type { GameChannel, Room, Index, AppActions } from "../model";
+import type { TvEvent, TvBroadcast } from "../model/tv";
+import type {
+  GameChannel,
+  Room,
+  User,
+  KgsClientState,
+  Index,
+  AppActions,
+} from "../model";
 
 type Props = {
   activeGames: Array<GameChannel>,
   gamesById: Index<GameChannel>,
   roomsById: Index<Room>,
   actions: AppActions,
+  currentUser?: ?User,
+  usersByName?: Index<User>,
+  clientState?: KgsClientState,
   tvStreamUrl: ?string,
   tvReplayGameId: ?number,
   // Optional injected calendar (dev harness/tests) - raw events.json
@@ -32,19 +46,35 @@ type State = {
   replayUrl: ?string,
   tvEventsStatus: "loading" | "ready" | "error",
   tvEvents: Array<TvEvent>,
+  now: number,
 };
 
 export default class TvScreen extends Component<Props, State> {
+  _refreshTimer: ?IntervalID;
+  _mounted: boolean = false;
   state = {
     activeTabId: this.props.tvReplayGameId ? "replay" : "live",
     replayUrl: null,
     tvEventsStatus: "loading",
     tvEvents: [],
+    now: Date.now(),
   };
 
   componentDidMount() {
+    this._mounted = true;
     window.scrollTo(0, 0);
     this._loadEvents();
+    this._refreshTimer = setInterval(() => {
+      this.setState({ now: Date.now() });
+      this._loadEvents();
+    }, 60000);
+  }
+
+  componentWillUnmount() {
+    this._mounted = false;
+    if (this._refreshTimer) {
+      clearInterval(this._refreshTimer);
+    }
   }
 
   componentDidUpdate(prevProps: Props) {
@@ -71,12 +101,41 @@ export default class TvScreen extends Component<Props, State> {
     }
     fetchTvEvents()
       .then((tvEvents) => {
-        this.setState({ tvEventsStatus: "ready", tvEvents });
+        if (this._mounted) {
+          this.setState({ tvEventsStatus: "ready", tvEvents });
+        }
       })
       .catch((err) => {
         console.warn("[tv] Failed to load live calendar events:", err);
-        this.setState({ tvEventsStatus: "error", tvEvents: [] });
+        if (this._mounted && !this.state.tvEvents.length) {
+          this.setState({ tvEventsStatus: "error" });
+        }
       });
+  };
+
+  _renderBroadcast = (broadcast: TvBroadcast) => {
+    let {
+      roomsById,
+      actions,
+      currentUser,
+      usersByName,
+      clientState,
+    } = this.props;
+    return (
+      <BroadcastCard
+        key={broadcast.event.id}
+        broadcast={broadcast}
+        roomsById={roomsById}
+        onJoinGame={actions.onJoinGame}
+        onOpenReplay={this._onOpenReplay}
+        currentUser={currentUser}
+        usersByName={usersByName}
+        actions={actions}
+        connectionKey={
+          clientState ? clientState.status + "/" + clientState.network : ""
+        }
+      />
+    );
   };
 
   render() {
@@ -90,7 +149,7 @@ export default class TvScreen extends Component<Props, State> {
     } = this.props;
     let { activeTabId, replayUrl, tvEvents } = this.state;
 
-    let now = new Date();
+    let now = new Date(this.state.now);
     let broadcasts = kgsTvSource.getLiveBroadcasts(
       activeGames,
       tvEvents,
@@ -101,6 +160,9 @@ export default class TvScreen extends Component<Props, State> {
     let nextEvent = getNextUpcomingEvent(tvEvents, now);
     let replayGame = tvReplayGameId ? gamesById[tvReplayGameId] : null;
     let replayTree = replayGame ? replayGame.tree : null;
+    let openedBroadcast = tvStreamUrl
+      ? getBroadcastForStream(broadcasts, tvStreamUrl)
+      : null;
 
     let tabs = [
       {
@@ -110,15 +172,7 @@ export default class TvScreen extends Component<Props, State> {
           <div className="TvScreen-live">
             {hasLive ? (
               <div className="TvScreen-live-content">
-                {broadcasts.map((broadcast) => (
-                  <BroadcastCard
-                    key={broadcast.event.id}
-                    broadcast={broadcast}
-                    roomsById={roomsById}
-                    onJoinGame={actions.onJoinGame}
-                    onOpenReplay={this._onOpenReplay}
-                  />
-                ))}
+                {broadcasts.map(this._renderBroadcast)}
               </div>
             ) : (
               <div className="TvScreen-live-empty">
@@ -146,7 +200,42 @@ export default class TvScreen extends Component<Props, State> {
       {
         id: "calendar",
         label: "Kalender",
-        content: <CalendarView onOpenReplay={this._onOpenReplay} />,
+        content: (
+          <CalendarView
+            events={this.props.events ? tvEvents : undefined}
+            onOpenReplay={this._onOpenReplay}
+            renderEvent={(event) => {
+              let broadcast = kgsTvSource.getLiveBroadcasts(
+                activeGames,
+                [event],
+                roomsById,
+                now
+              )[0];
+              return broadcast ? (
+                this._renderBroadcast(broadcast)
+              ) : (
+                <CalendarEventCard
+                  event={event}
+                  onOpenReplay={this._onOpenReplay}
+                />
+              );
+            }}
+            renderChannel={(channel) => {
+              let broadcast = broadcasts.find(
+                ({ event }) =>
+                  event.stream_url === channel.url ||
+                  (event.channel &&
+                    event.channel.platform === channel.platform &&
+                    event.channel.id === channel.channel_id)
+              );
+              return broadcast ? (
+                this._renderBroadcast(broadcast)
+              ) : (
+                <ChannelCard channel={channel} />
+              );
+            }}
+          />
+        ),
       },
       {
         id: "replay",
@@ -181,7 +270,16 @@ export default class TvScreen extends Component<Props, State> {
                 ×
               </A>
             </div>
-            <StreamEmbed url={tvStreamUrl} />
+            {openedBroadcast ? (
+              this._renderBroadcast(openedBroadcast)
+            ) : (
+              <div>
+                <StreamEmbed key={tvStreamUrl} url={tvStreamUrl} />
+                <div className="TvGamePanel-notice">
+                  Diesem Stream ist kein KGS-Brett zugeordnet.
+                </div>
+              </div>
+            )}
           </div>
         ) : null}
         <TabNav

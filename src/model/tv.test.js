@@ -3,6 +3,7 @@ import {
   getLiveEventGames,
   getLiveEventForGame,
   getLiveBroadcasts,
+  getBroadcastForStream,
   getLiveWindow,
   hasVideoStream,
   validateTvEvent,
@@ -910,8 +911,33 @@ describe("getLiveBroadcasts", () => {
   });
 });
 
+describe("getBroadcastForStream", () => {
+  it.each([
+    [
+      "https://twitch.tv/SomeChannel",
+      "https://www.twitch.tv/somechannel",
+      "twitch",
+    ],
+    [
+      "https://youtu.be/abcdef12345?t=20",
+      "https://www.youtube.com/watch?v=abcdef12345",
+      "youtube",
+    ],
+  ])(
+    "matches stream identity across alternate URLs: %s",
+    (url, stream_url, platform) => {
+      let broadcast = { event: { stream_url, platform }, games: [] };
+      expect(getBroadcastForStream([broadcast], url)).toBe(broadcast);
+      expect(
+        getBroadcastForStream([broadcast], "https://twitch.tv/unrelated")
+      ).toBe(null);
+    }
+  );
+});
+
 describe("fetchTvEvents", () => {
   let originalFetch;
+  let originalApiUrl;
 
   function okResponse(body) {
     return Promise.resolve({
@@ -923,11 +949,17 @@ describe("fetchTvEvents", () => {
 
   beforeEach(() => {
     originalFetch = global.fetch;
+    originalApiUrl = process.env.REACT_APP_API_URL;
     _resetTvEventsCache();
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    if (originalApiUrl === undefined) {
+      delete process.env.REACT_APP_API_URL;
+    } else {
+      process.env.REACT_APP_API_URL = originalApiUrl;
+    }
     jest.restoreAllMocks();
   });
 
@@ -991,6 +1023,17 @@ describe("fetchTvEvents", () => {
     await fetchTvEvents();
     await fetchTvEvents();
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the timer-updated local calendar on desktop and refreshes it after five minutes", async () => {
+    process.env.REACT_APP_API_URL = "/json/access";
+    let clock = jest.spyOn(Date, "now").mockReturnValue(0);
+    global.fetch = jest.fn(() => okResponse({ events: [] }));
+    await fetchTvEvents();
+    expect(global.fetch.mock.calls[0][0]).toBe("tv/events.json");
+    clock.mockReturnValue(5 * 60 * 1000);
+    await fetchTvEvents();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it("refetches once the cache expires", async () => {

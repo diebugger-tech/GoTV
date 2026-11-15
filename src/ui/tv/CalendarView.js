@@ -12,6 +12,7 @@ import {
   fetchTvChannels,
 } from "../../model/tv";
 import type { TvEvent, TvChannel } from "../../model/tv";
+import type { Node } from "react";
 
 type Props = {
   // When provided, these are used instead of fetching events.json (dev
@@ -22,12 +23,15 @@ type Props = {
   events?: ?Array<TvEvent>,
   channels?: ?Array<TvChannel>,
   onOpenReplay?: (string) => any,
+  renderEvent?: (TvEvent) => Node,
+  renderChannel?: (TvChannel) => Node,
 };
 
 type State = {
   status: "loading" | "ready" | "error",
   events: Array<TvEvent>,
   channels: Array<TvChannel>,
+  now: number,
 };
 
 // The Kalender zone (today+upcoming+past, i.e. everything groupEventsByTime
@@ -41,17 +45,36 @@ const REGION_LABELS = {
 };
 
 export default class CalendarView extends Component<Props, State> {
+  _refreshTimer: ?IntervalID;
+  _mounted: boolean = false;
   state = {
     status: "loading",
     events: [],
     channels: [],
+    now: Date.now(),
   };
 
   componentDidMount() {
+    this._mounted = true;
     if (this.props.events || this.props.channels) {
       this._applyProvided();
     } else {
       this._loadEvents();
+    }
+    this._refreshTimer = setInterval(() => {
+      this.setState({ now: Date.now() });
+      if (this.props.events || this.props.channels) {
+        this._applyProvided();
+      } else {
+        this._loadEvents();
+      }
+    }, 60000);
+  }
+
+  componentWillUnmount() {
+    this._mounted = false;
+    if (this._refreshTimer) {
+      clearInterval(this._refreshTimer);
     }
   }
 
@@ -78,14 +101,17 @@ export default class CalendarView extends Component<Props, State> {
   };
 
   _loadEvents = () => {
-    this.setState({ status: "loading", events: [], channels: [] });
     Promise.all([fetchTvEvents(), fetchTvChannels()])
       .then(([events, channels]) => {
-        this.setState({ status: "ready", events, channels });
+        if (this._mounted) {
+          this.setState({ status: "ready", events, channels });
+        }
       })
       .catch((err) => {
         console.warn("[tv] Failed to load calendar events:", err);
-        this.setState({ status: "error", events: [], channels: [] });
+        if (this._mounted && this.state.status !== "ready") {
+          this.setState({ status: "error" });
+        }
       });
   };
 
@@ -102,13 +128,19 @@ export default class CalendarView extends Component<Props, State> {
         <div className="CalendarView-group-title">
           {REGION_LABELS[regionKey]}
         </div>
-        {group.map((event) => (
-          <CalendarEventCard
-            key={event.id}
-            event={event}
-            onOpenReplay={this.props.onOpenReplay}
-          />
-        ))}
+        {group.map((event) =>
+          this.props.renderEvent ? (
+            <React.Fragment key={event.id}>
+              {this.props.renderEvent(event)}
+            </React.Fragment>
+          ) : (
+            <CalendarEventCard
+              key={event.id}
+              event={event}
+              onOpenReplay={this.props.onOpenReplay}
+            />
+          )
+        )}
       </div>
     );
   }
@@ -142,7 +174,7 @@ export default class CalendarView extends Component<Props, State> {
       );
     }
 
-    let timeGroups = groupEventsByTime(events, new Date());
+    let timeGroups = groupEventsByTime(events, new Date(this.state.now));
     let calendarEvents = [
       ...timeGroups.today,
       ...timeGroups.upcoming,
@@ -166,7 +198,13 @@ export default class CalendarView extends Component<Props, State> {
         <div className="CalendarView-group" key="channels">
           <div className="CalendarView-group-title">Sender</div>
           {channels.map((channel) => (
-            <ChannelCard key={channel.id} channel={channel} />
+            <React.Fragment key={channel.id}>
+              {this.props.renderChannel ? (
+                this.props.renderChannel(channel)
+              ) : (
+                <ChannelCard channel={channel} />
+              )}
+            </React.Fragment>
           ))}
           {!channels.length ? (
             <div className="CalendarView-channels-empty">

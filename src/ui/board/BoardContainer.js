@@ -11,6 +11,7 @@ import type {
 type Props = {
   game: GameChannel,
   playing?: boolean,
+  embedded?: boolean,
   onClickPoint: (
     game: GameChannel,
     loc: Point,
@@ -37,7 +38,9 @@ export default class BoardContainer extends Component<Props, State> {
       let containerHeight = this._containerRef.offsetHeight;
       let boardWidth = Math.min(containerWidth, containerHeight);
       let marginTop = -35;
-      if (containerWidth <= 736 || containerWidth - boardWidth < 180) {
+      if (this.props.embedded) {
+        marginTop = 0;
+      } else if (containerWidth <= 736 || containerWidth - boardWidth < 180) {
         boardWidth = Math.min(containerWidth, containerHeight - 35);
         marginTop = 0;
       }

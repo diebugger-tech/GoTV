@@ -2,14 +2,25 @@
 import React, { PureComponent as Component } from "react";
 import GameList from "../game/GameList";
 import CalendarEventCard from "./CalendarEventCard";
+import TvGamePanel from "./TvGamePanel";
 import type { TvBroadcast } from "../../model/tv";
-import type { GameChannel, Room, Index } from "../../model";
+import type { GameChannel, Room, User, AppActions, Index } from "../../model";
 
 type Props = {
   broadcast: TvBroadcast,
   roomsById: Index<Room>,
   onJoinGame: (number) => any,
   onOpenReplay?: (string) => any,
+  currentUser?: ?User,
+  usersByName?: Index<User>,
+  actions?: AppActions,
+  connectionKey?: string,
+};
+
+type State = {
+  streamLoaded: boolean,
+  streamKey: number,
+  selectedGameId: ?number,
 };
 
 // List metadata only: never join a game to determine its status or move.
@@ -52,14 +63,59 @@ function getBroadcastStatus(games: Array<GameChannel>): string {
 // CalendarEventCard) plus the KGS boards relayed for it, to watch the game
 // on the board next to the commentary. A broadcast without KGS boards
 // (e.g. an international tournament shown on YouTube only) just says so.
-export default class BroadcastCard extends Component<Props> {
+export default class BroadcastCard extends Component<Props, State> {
+  state = { streamLoaded: false, streamKey: 0, selectedGameId: null };
+
+  _onStreamLoad = () => {
+    this.setState({ streamLoaded: true });
+  };
+
+  _onClose = () => {
+    this.setState((state) => ({
+      streamLoaded: false,
+      streamKey: state.streamKey + 1,
+      selectedGameId: null,
+    }));
+  };
+
+  _onSelectBoard = (selectedGameId: number) => {
+    this.setState({ selectedGameId });
+  };
+
   render() {
-    let { broadcast, roomsById, onJoinGame, onOpenReplay } = this.props;
+    let {
+      broadcast,
+      roomsById,
+      onJoinGame,
+      onOpenReplay,
+      currentUser,
+      usersByName,
+      actions,
+      connectionKey,
+    } = this.props;
     let { event, games } = broadcast;
+    let { streamLoaded, streamKey, selectedGameId } = this.state;
+    let selectedGame =
+      games.find((game) => game.id === selectedGameId) ||
+      games.find((game) => !game.over) ||
+      games[0];
+    let inline = !!(streamLoaded && currentUser && actions);
     return (
-      <div className="BroadcastCard">
-        <CalendarEventCard event={event} onOpenReplay={onOpenReplay} />
+      <div className={"BroadcastCard" + (inline ? " BroadcastCard-open" : "")}>
+        <CalendarEventCard
+          key={streamKey}
+          event={event}
+          onOpenReplay={onOpenReplay}
+          onStreamLoad={this._onStreamLoad}
+        />
         <div className="BroadcastCard-boards">
+          {streamLoaded ? (
+            <button
+              className="Button BroadcastCard-close"
+              onClick={this._onClose}>
+              Übertragung schließen
+            </button>
+          ) : null}
           <div className="BroadcastCard-boards-title">
             {games.length
               ? games.length === 1
@@ -76,7 +132,17 @@ export default class BroadcastCard extends Component<Props> {
             <GameList
               games={games}
               roomsById={roomsById}
-              onSelect={onJoinGame}
+              onSelect={inline ? this._onSelectBoard : onJoinGame}
+            />
+          ) : null}
+          {inline && selectedGame && currentUser && actions ? (
+            <TvGamePanel
+              key={selectedGame.id}
+              game={selectedGame}
+              currentUser={currentUser}
+              usersByName={usersByName || {}}
+              actions={actions}
+              connectionKey={connectionKey}
             />
           ) : null}
         </div>

@@ -7,6 +7,7 @@ import type { TvEvent } from "../../model/tv";
 type Props = {
   event: TvEvent,
   onOpenReplay?: (string) => any,
+  onStreamLoad?: () => any,
 };
 
 const PLATFORM_LABEL = {
@@ -52,7 +53,7 @@ export default class CalendarEventCard extends Component<Props> {
         {event.notes ? (
           <div className="CalendarEvent-notes">{event.notes}</div>
         ) : null}
-        <StreamEmbed event={event} />
+        <StreamEmbed event={event} onLoad={this.props.onStreamLoad} />
         {event.sgf_url && onOpenReplay ? (
           <div className="CalendarEvent-replay">
             <button

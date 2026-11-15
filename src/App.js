@@ -71,7 +71,7 @@ class App extends Component<Props, State> {
   };
 
   _onClientChange = (clientState: KgsClientState) => {
-    this._store.dispatch({ type: "CLIENT_STATE_CHANGE", clientState });
+    this._actions.onClientStateChange(clientState);
   };
 
   _onHistoryChange = (loc: Object, action: string) => {

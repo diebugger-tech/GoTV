@@ -175,6 +175,20 @@
 .BroadcastCard {
   border-bottom: 2px solid $very-muted;
 
+  &-open {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(300px, 1fr);
+    align-items: start;
+
+    > .CalendarEvent {
+      min-width: 0;
+    }
+  }
+
+  &-close {
+    margin: 6px 10px;
+  }
+
   .CalendarEvent {
     border-bottom: none;
   }
@@ -194,6 +208,53 @@
       border-top: 1px solid $very-muted;
       background: $off-white;
     }
+  }
+}
+
+.TvGamePanel {
+  padding: 10px;
+  min-width: 0;
+
+  &-board {
+    position: relative;
+    padding-top: 100%;
+    margin-top: 8px;
+
+    .GameScreen-board-container {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      padding: 0;
+      background: transparent;
+    }
+  }
+
+  &-chat-title {
+    font-weight: bold;
+    margin-top: 12px;
+    padding: 8px;
+    background: $off-white;
+  }
+
+  &-chat {
+    height: 240px;
+    overflow-y: auto;
+    border: 1px solid $very-muted;
+    overflow-wrap: break-word;
+  }
+
+  &-notice {
+    padding: 12px;
+    color: $semi-muted;
+    font-size: 13px;
+  }
+}
+
+@media only screen and (max-width: 800px) {
+  .BroadcastCard-open {
+    display: block;
   }
 }
 

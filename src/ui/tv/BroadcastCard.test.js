@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { act } from "react-dom/test-utils";
 import BroadcastCard from "./BroadcastCard";
+import { parseSgf } from "../../model/sgf";
 
 describe("BroadcastCard live status", () => {
   let container;
@@ -22,6 +23,12 @@ describe("BroadcastCard live status", () => {
   };
 
   beforeEach(() => {
+    jest
+      .spyOn(HTMLElement.prototype, "offsetWidth", "get")
+      .mockReturnValue(400);
+    jest
+      .spyOn(HTMLElement.prototype, "offsetHeight", "get")
+      .mockReturnValue(400);
     container = document.createElement("div");
     document.body.appendChild(container);
     onJoinGame = jest.fn();
@@ -30,15 +37,17 @@ describe("BroadcastCard live status", () => {
   afterEach(() => {
     ReactDOM.unmountComponentAtNode(container);
     container.remove();
+    jest.restoreAllMocks();
   });
 
-  function render(games) {
+  function render(games, props = {}) {
     act(() => {
       ReactDOM.render(
         <BroadcastCard
           broadcast={{ event, games }}
           roomsById={{}}
           onJoinGame={onJoinGame}
+          {...props}
         />,
         container
       );
@@ -46,6 +55,75 @@ describe("BroadcastCard live status", () => {
     let status = container.querySelector(".BroadcastCard-boards-status");
     return status ? status.textContent : null;
   }
+
+  it("opens the board and chat with the stream and releases the selected board on close", () => {
+    let release = jest.fn();
+    let actions = {
+      onObserveTvGame: jest.fn(() => release),
+      onUserDetail: jest.fn(),
+      onOpenTvStream: jest.fn(),
+    };
+    let props = {
+      currentUser: { name: "viewer" },
+      usersByName: {},
+      actions,
+    };
+    let tree = parseSgf("(;SZ[9];B[aa];W[bb])");
+    tree.activeNode = tree.currentLine[1];
+    tree.messages[tree.rootNode] = [
+      {
+        id: 1,
+        sender: "fan",
+        body: "Eine spannende Partie!",
+        date: new Date(),
+      },
+    ];
+    render([{ ...game, tree }], props);
+    expect(actions.onObserveTvGame).not.toHaveBeenCalled();
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    expect(container.querySelector("iframe")).not.toBe(null);
+    expect(container.querySelector(".TvGamePanel")).not.toBe(null);
+    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(1);
+    expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(0);
+    expect(container.textContent).toContain("Eine spannende Partie!");
+    expect(actions.onObserveTvGame).toHaveBeenCalledWith(42);
+    expect(onJoinGame).not.toHaveBeenCalled();
+    let nextTree = { ...tree, activeNode: tree.currentLine[2] };
+    nextTree.messages = {
+      ...tree.messages,
+      [nextTree.activeNode]: [
+        { id: 2, sender: "fan", body: "Der nächste Zug!", date: new Date() },
+      ],
+    };
+    render([{ ...game, tree: nextTree, moveNum: 2 }], props);
+    expect(container.textContent).toContain("Der nächste Zug!");
+    expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(1);
+    expect(actions.onObserveTvGame).toHaveBeenCalledTimes(1);
+    act(() => container.querySelector(".BroadcastCard-close").click());
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(container.querySelector("iframe")).toBe(null);
+  });
+
+  it("switches only the selected board and releases it when leaving the view", () => {
+    let releases = [jest.fn(), jest.fn()];
+    let actions = {
+      onObserveTvGame: jest.fn((id) => releases[id === 42 ? 0 : 1]),
+    };
+    render([game, { ...game, id: 43 }], {
+      currentUser: { name: "viewer" },
+      usersByName: {},
+      actions,
+    });
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    act(() => container.querySelectorAll(".GameList-item")[1].click());
+    expect(releases[0]).toHaveBeenCalledTimes(1);
+    expect(actions.onObserveTvGame.mock.calls).toEqual([[42], [43]]);
+    expect(onJoinGame).not.toHaveBeenCalled();
+    act(() => {
+      ReactDOM.unmountComponentAtNode(container);
+    });
+    expect(releases[1]).toHaveBeenCalledTimes(1);
+  });
 
   it("updates the move from list data and joins only when a board is clicked", () => {
     expect(render([game])).toBe("Partie läuft · Zug 42");

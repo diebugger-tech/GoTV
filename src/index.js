@@ -8,6 +8,7 @@ import StreamEmbed from "./ui/tv/StreamEmbed";
 import SgfReplayView from "./ui/tv/SgfReplayView";
 import ChatMessages from "./ui/chat/ChatMessages";
 import { isTouchDevice } from "./util/dom";
+import { parseSgf } from "./model/sgf";
 import "./css/index.scss";
 import "font-awesome/css/font-awesome.css";
 
@@ -263,7 +264,17 @@ if (
   class TvDevHarness extends React.Component {
     constructor(props) {
       super(props);
-      this.state = { tvStreamUrl: null, replayUrl: null, replayKey: 0 };
+      let tree = parseSgf("(;SZ[19];B[pd];W[dd];B[qp];W[dq];B[fc])");
+      tree.activeNode = tree.currentLine[1];
+      tree.messages[tree.rootNode] = DEV_CHAT_MESSAGES;
+      this.state = {
+        tvStreamUrl: null,
+        replayUrl: null,
+        replayKey: 0,
+        games: DEV_FAKE_GAMES.map((game) =>
+          game.id === 1 ? { ...game, tree, moveNum: 1 } : game
+        ),
+      };
       this._actions = {
         onJoinGame: (gameId) => {
           console.log("[tv-dev] onJoinGame", gameId);
@@ -271,11 +282,53 @@ if (
         onCloseTvStream: () => {
           this.setState({ tvStreamUrl: null });
         },
+        onObserveTvGame: (gameId) => {
+          console.log("[tv-dev] observe", gameId);
+          let timer = setInterval(() => {
+            this.setState((state) => ({
+              games: state.games.map((game) => {
+                if (game.id !== gameId || !game.tree) {
+                  return game;
+                }
+                let move = Math.min(
+                  game.moveNum + 1,
+                  game.tree.currentLine.length - 1
+                );
+                let activeNode = game.tree.currentLine[move];
+                return {
+                  ...game,
+                  moveNum: move,
+                  tree: {
+                    ...game.tree,
+                    activeNode,
+                    messages: {
+                      ...game.tree.messages,
+                      [activeNode]: [
+                        {
+                          id: 100 + move,
+                          sender: "StreamFan",
+                          body: "Live-Update zu Zug " + move,
+                          date: new Date(),
+                        },
+                      ],
+                    },
+                  },
+                };
+              }),
+            }));
+          }, 5000);
+          return () => {
+            clearInterval(timer);
+            console.log("[tv-dev] release", gameId);
+          };
+        },
+        onUserDetail: (name) => console.log("[tv-dev] user", name),
+        onOpenTvStream: (url) => this.setState({ tvStreamUrl: url }),
       };
     }
 
     render() {
-      let { tvStreamUrl, replayUrl, replayKey } = this.state;
+      let { tvStreamUrl, replayUrl, replayKey, games } = this.state;
       return (
         <div className="TvDevHarness" data-dev-marker="GO-TV-DEV-HARNESS">
           <div style={DEV_HARNESS_HEADER_STYLE}>
@@ -286,7 +339,10 @@ if (
               1. TV-Tab (simulierte Store-Daten)
             </div>
             <TvScreen
-              activeGames={DEV_FAKE_GAMES}
+              activeGames={games}
+              gamesById={{}}
+              currentUser={DEV_CURRENT_USER}
+              usersByName={DEV_FAKE_USERS}
               roomsById={{}}
               actions={this._actions}
               tvStreamUrl={tvStreamUrl}

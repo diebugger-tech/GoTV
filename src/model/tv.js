@@ -341,16 +341,21 @@ function fetchAndValidateTvData(url: string): Promise<TvData> {
 // failure). Same validation either way. Successful results are cached in
 // memory for an hour.
 function fetchTvData(): Promise<TvData> {
-  if (_tvDataCache && Date.now() - _tvDataCache.fetchedAt < EVENTS_CACHE_MS) {
+  // The desktop timer updates the installed local copy without a new build.
+  let desktop = process.env.REACT_APP_API_URL === "/json/access";
+  let cacheMs = desktop ? 5 * 60 * 1000 : EVENTS_CACHE_MS;
+  if (_tvDataCache && Date.now() - _tvDataCache.fetchedAt < cacheMs) {
     return Promise.resolve(_tvDataCache.data);
   }
-  return fetchAndValidateTvData(REMOTE_EVENTS_URL)
+  return fetchAndValidateTvData(desktop ? LOCAL_EVENTS_URL : REMOTE_EVENTS_URL)
     .catch((err) => {
       console.log(
-        "[tv] Remote events.json unavailable, falling back to local copy:",
+        "[tv] Primary events.json unavailable, trying fallback:",
         err
       );
-      return fetchAndValidateTvData(LOCAL_EVENTS_URL);
+      return fetchAndValidateTvData(
+        desktop ? REMOTE_EVENTS_URL : LOCAL_EVENTS_URL
+      );
     })
     .then((data) => {
       _tvDataCache = { data, fetchedAt: Date.now() };
@@ -793,4 +798,36 @@ export function getStreamUrlInfo(
     return { platform: "twitch", embedUrl: null, externalUrl };
   }
   return { platform: "other", embedUrl: null, externalUrl };
+}
+
+// Chat/share URLs may spell the same channel or video differently.
+export function getBroadcastForStream(
+  broadcasts: Array<TvBroadcast>,
+  url: string
+): ?TvBroadcast {
+  let normalized = normalizeUrl(url);
+  let videoId = getYouTubeVideoId(normalized);
+  let twitchChannel = getTwitchChannel(normalized);
+  return (
+    broadcasts.find(({ event }) => {
+      if (normalized === normalizeUrl(event.stream_url)) {
+        return true;
+      }
+      if (videoId) {
+        return (
+          videoId === (event.video_id || getYouTubeVideoId(event.stream_url))
+        );
+      }
+      if (twitchChannel) {
+        let channel =
+          event.channel && event.channel.platform === "twitch"
+            ? event.channel.id
+            : getTwitchChannel(event.stream_url);
+        return (
+          !!channel && channel.toLowerCase() === twitchChannel.toLowerCase()
+        );
+      }
+      return false;
+    }) || null
+  );
 }

@@ -5,8 +5,10 @@ import { tempId, isTempId } from "./tempId";
 import { prepareSavedAppState } from "./appState";
 import { isGamePlayer, isGameProposalPlayer, proposalsEqual } from "./game";
 import { SOUNDS } from "../sound";
+import { TvGameSubscriptions } from "./TvGameSubscriptions";
 import type {
   GameChannel,
+  KgsClientState,
   GameFilter,
   GameProposal,
   GameRole,
@@ -27,11 +29,16 @@ export class AppActions {
   _store: AppStore;
   _client: KgsClient;
   _history: Object;
+  _tvGameSubscriptions: TvGameSubscriptions;
 
   constructor(store: AppStore, client: KgsClient, history: Object) {
     this._store = store;
     this._client = client;
     this._history = history;
+    this._tvGameSubscriptions = new TvGameSubscriptions(
+      () => this._store.getState(),
+      (message) => this._client.sendMessage(message)
+    );
   }
 
   _isOffline = () => {
@@ -617,6 +624,15 @@ export class AppActions {
       return;
     }
     this._client.sendMessage({ type: "UNJOIN_REQUEST", channelId });
+  };
+
+  onObserveTvGame = (gameId: number): (() => void) => {
+    return this._tvGameSubscriptions.observe(gameId);
+  };
+
+  onClientStateChange = (clientState: KgsClientState) => {
+    this._store.dispatch({ type: "CLIENT_STATE_CHANGE", clientState });
+    this._tvGameSubscriptions.sync();
   };
 
   onChangeCurrentNode = (game: GameChannel, nodeId: number) => {
