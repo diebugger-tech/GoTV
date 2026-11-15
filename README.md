@@ -1,19 +1,29 @@
-# <img src="./design/logo.svg" width="28"> Shin KGS
-[![Build Status](https://travis-ci.com/jkk/shinkgs.svg?branch=master)](https://travis-ci.com/jkk/shinkgs)
+# <img src="./desktop/icons/gotv.svg" width="32"> GoTV
 
-A semi-official JavaScript client for [KGS Go Server](http://www.gokgs.com/).
+GoTV adds live Go broadcasts, a tournament calendar, and SGF replay on top
+of a JavaScript client for [KGS Go Server](http://www.gokgs.com/).
 
 > **Note:** This repository is a fork of [jkk/shinkgs](https://github.com/jkk/shinkgs)
-> ("Go TV" fork). It is **not** the official Shin KGS client, it is **not**
+> (the "GoTV" fork). It is **not** the official Shin KGS client, it is **not**
 > operated by or affiliated with KGS Go Server, and it uses **no** KGS logos
 > or trademarks. See `LICENSE.txt` for the original MIT license (Justin Kramer).
 
-- The **official stable version** is available at https://shin.gokgs.com.
-- A development version (less stable) is available at https://shinkgs-master.now.sh.
+- The upstream project's **official stable version** is available at https://shin.gokgs.com.
+- The upstream project's **development version** (less stable) is available at https://shinkgs-master.now.sh.
 
-## Screenshot
+## Screenshots
 
-<img src="./design/screenshot.png" alt="Screenshot - iOS Safari" width="375" height="667">
+**Live** — broadcasts with an official video embed, listing the matching KGS games to jump to:
+
+<img src="./docs/screenshots/tv-live.png" width="700">
+
+**Kalender** — upcoming and recent tournaments grouped by region, plus a standing channel roster:
+
+<img src="./docs/screenshots/tv-kalender.png" width="700">
+
+**Nachspielen** — load any SGF (file, paste, or a bundled demo) and step through it move by move:
+
+<img src="./docs/screenshots/tv-nachspielen.png" width="700">
 
 ## Goals
 
@@ -53,7 +63,7 @@ Discord chat group for anyone interested in helping: https://discord.gg/vwzxdVr
 ## Desktop-Installation (Linux, GNOME)
 
 **Currently Linux only** (tested on Ubuntu/GNOME) - Windows and macOS
-packaging is planned but not built yet. The "Go TV" fork can be installed
+packaging is planned but not built yet. The "GoTV" fork can be installed
 as a local desktop app: a Go-board-themed icon in the app grid opens the
 login screen in its own window (no browser chrome).
 
@@ -73,7 +83,7 @@ Install (no sudo, user-scoped only):
 sh desktop/install.sh
 ```
 
-Then launch "Go TV" from the app grid. The app serves the production build
+Then launch "GoTV" from the app grid. The app serves the production build
 from `build-desktop/` on `127.0.0.1:8788` only; KGS traffic is proxied
 through the local server at `/json/access` (KGS only allows a whitelist
 of CORS origins, so direct browser access from localhost is rejected).
@@ -99,7 +109,7 @@ in place by the uninstaller.
 
 ## Events eintragen
 
-The Go TV calendar (`public/tv/events.json`) is loaded from
+The GoTV calendar (`public/tv/events.json`) is loaded from
 [`diebugger-tech/shinkgs`](https://github.com/diebugger-tech/shinkgs) on
 GitHub first, falling back to the bundled local copy when offline or
 unreachable (`fetchTvEvents()` in `src/model/tv.js`, cached for an hour).

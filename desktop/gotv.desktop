@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Go TV
+Name=GoTV
 Comment=Live-Go: Übertragungen, Turnierkalender und SGF-Nachspielen (inoffizieller Fork von Shin KGS)
 Exec=/bin/sh @INSTALL_HOME@/.local/bin/launch-gotv
 Icon=gotv
