@@ -2,13 +2,44 @@
 import React, { PureComponent as Component } from "react";
 import StreamEmbed from "./StreamEmbed";
 import { formatLocaleDate, formatLocaleTime } from "../../util/date";
+import { getLiveWindow, hasVideoStream } from "../../model/tv";
 import type { TvEvent } from "../../model/tv";
 
 type Props = {
   event: TvEvent,
   onOpenReplay?: (string) => any,
   onStreamLoad?: () => any,
+  boardCount?: number,
+  now?: number,
 };
+
+function getBoardStatus(
+  event: TvEvent,
+  boardCount: ?number,
+  now: number
+): string {
+  if (boardCount && boardCount > 0) {
+    return (
+      "Stream + " +
+      boardCount +
+      (boardCount === 1 ? " KGS-Brett" : " KGS-Bretter") +
+      " · Live-Züge und Partiechat"
+    );
+  }
+  if (event.sgf_url) {
+    return "SGF-Brett zum Nachspielen verfügbar";
+  }
+  if (getLiveWindow(event).end.getTime() < now) {
+    return "Termin vorbei · kein Live-Brett verfügbar";
+  }
+  if (event.kgs_room || (event.kgs_players && event.kgs_players.length)) {
+    return (
+      "KGS-Zuordnung hinterlegt" +
+      (boardCount === 0 ? " · derzeit kein passendes Brett online" : "")
+    );
+  }
+  return "Nur Stream · keine KGS-Brettzuordnung hinterlegt";
+}
 
 const PLATFORM_LABEL = {
   youtube: "YouTube",
@@ -35,7 +66,7 @@ export function formatEventDateRange(event: TvEvent): string {
 // (Kalender tab) and TvScreen's Live tab (currently-live entries).
 export default class CalendarEventCard extends Component<Props> {
   render() {
-    let { event, onOpenReplay } = this.props;
+    let { event, onOpenReplay, boardCount, now } = this.props;
     return (
       <div className="CalendarEvent">
         <div className="CalendarEvent-header">
@@ -52,6 +83,19 @@ export default class CalendarEventCard extends Component<Props> {
         <div className="CalendarEvent-date">{formatEventDateRange(event)}</div>
         {event.notes ? (
           <div className="CalendarEvent-notes">{event.notes}</div>
+        ) : null}
+        {hasVideoStream(event) || event.sgf_url ? (
+          <div
+            className={
+              "CalendarEvent-board-status" +
+              (boardCount ? " CalendarEvent-board-status-linked" : "")
+            }>
+            {getBoardStatus(
+              event,
+              boardCount,
+              now === undefined ? Date.now() : now
+            )}
+          </div>
         ) : null}
         <StreamEmbed event={event} onLoad={this.props.onStreamLoad} />
         {event.sgf_url && onOpenReplay ? (

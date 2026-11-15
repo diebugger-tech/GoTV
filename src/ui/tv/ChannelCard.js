@@ -33,6 +33,9 @@ export default class ChannelCard extends Component<Props> {
         {channel.notes ? (
           <div className="ChannelCard-notes">{channel.notes}</div>
         ) : null}
+        <div className="CalendarEvent-board-status">
+          Nur Stream · keine KGS-Brettzuordnung hinterlegt
+        </div>
         <StreamEmbed channel={channel} />
       </div>
     );

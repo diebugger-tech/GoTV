@@ -138,6 +138,7 @@ export default class CalendarView extends Component<Props, State> {
               key={event.id}
               event={event}
               onOpenReplay={this.props.onOpenReplay}
+              now={this.state.now}
             />
           )
         )}

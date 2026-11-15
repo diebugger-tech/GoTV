@@ -5,6 +5,71 @@ import TvScreen from "./TvScreen";
 import { _resetTvEventsCache } from "../model/tv";
 
 describe("TV live time windows", () => {
+  it("opens a confirmed KGS board with its stream in both Live and Kalender", () => {
+    let scroll = jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+    let container = document.createElement("div");
+    document.body.appendChild(container);
+    let release = jest.fn();
+    let actions = {
+      onObserveTvGame: jest.fn(() => release),
+      onJoinGame: jest.fn(),
+    };
+    let event = {
+      id: "mapped",
+      name: "Mapped Cup",
+      date_start: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+      date_end: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+      platform: "twitch",
+      stream_url: "https://www.twitch.tv/somechannel",
+      kgs_room: "Tournament",
+    };
+    let game = {
+      id: 42,
+      type: "tournament",
+      event: true,
+      roomId: 12,
+      moveNum: 1,
+      players: { black: { name: "a" }, white: { name: "b" } },
+    };
+    try {
+      act(() => {
+        ReactDOM.render(
+          <TvScreen
+            activeGames={[game]}
+            gamesById={{ 42: game }}
+            roomsById={{ 12: { id: 12, name: "Tournament" } }}
+            actions={actions}
+            currentUser={{ name: "viewer" }}
+            usersByName={{}}
+            tvStreamUrl={null}
+            tvReplayGameId={null}
+            events={[event]}
+          />,
+          container
+        );
+      });
+      expect(
+        container.querySelector(".CalendarEvent-board-status").textContent
+      ).toBe("Stream + 1 KGS-Brett · Live-Züge und Partiechat");
+      act(() => container.querySelector(".StreamEmbed-actions button").click());
+      expect(container.querySelector(".TvGamePanel")).not.toBe(null);
+      expect(actions.onObserveTvGame).toHaveBeenCalledWith(42);
+      act(() => container.querySelectorAll(".TabNav-tab")[1].click());
+      expect(release).toHaveBeenCalledTimes(1);
+      expect(
+        container.querySelector(".CalendarEvent-board-status-linked")
+      ).not.toBe(null);
+      act(() => container.querySelector(".StreamEmbed-actions button").click());
+      expect(container.querySelector(".TvGamePanel")).not.toBe(null);
+      expect(actions.onObserveTvGame).toHaveBeenCalledTimes(2);
+      expect(actions.onJoinGame).not.toHaveBeenCalled();
+    } finally {
+      ReactDOM.unmountComponentAtNode(container);
+      container.remove();
+      scroll.mockRestore();
+    }
+  });
+
   it("opens and closes a scheduled live window while cached calendar data stays unchanged", async () => {
     let NativeDate = Date;
     let now = new NativeDate("2026-06-15T10:00:00Z").getTime();

@@ -131,6 +131,7 @@ export default class TvScreen extends Component<Props, State> {
         currentUser={currentUser}
         usersByName={usersByName}
         actions={actions}
+        now={this.state.now}
         connectionKey={
           clientState ? clientState.status + "/" + clientState.network : ""
         }
@@ -217,6 +218,7 @@ export default class TvScreen extends Component<Props, State> {
                 <CalendarEventCard
                   event={event}
                   onOpenReplay={this._onOpenReplay}
+                  now={this.state.now}
                 />
               );
             }}

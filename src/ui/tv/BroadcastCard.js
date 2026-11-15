@@ -15,6 +15,7 @@ type Props = {
   usersByName?: Index<User>,
   actions?: AppActions,
   connectionKey?: string,
+  now?: number,
 };
 
 type State = {
@@ -107,6 +108,8 @@ export default class BroadcastCard extends Component<Props, State> {
           event={event}
           onOpenReplay={onOpenReplay}
           onStreamLoad={this._onStreamLoad}
+          boardCount={games.length}
+          now={this.props.now}
         />
         <div className="BroadcastCard-boards">
           {streamLoaded ? (
