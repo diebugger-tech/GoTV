@@ -157,8 +157,10 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
 - `src/model/tv.js` — pure Logik: Sortierung nach Spielstärke, Event-/URL-Parsing-Helfer.
 - `src/ui/TvScreen.js` — TV-Tab mit Bereichen Live / Kalender / Nachspielen (TabNav).
 - `src/util/urls.js` — extract_urls/normalize_url (Port von chat_panel.rs).
-- `src/model/sgf.js` — SGF-Parser (Port von sgf.rs, erweitert um Varianten) → GameTree;
-  OGS nutzt `parseSgf(..., {skipI: false})` für Standard-SGF-Koordinaten.
+- `src/model/sgf.js` — SGF-Parser (Port von sgf.rs, erweitert um Varianten) → GameTree.
+  Koordinaten nach SGF-Standard wie in sgf.rs: Buchstabe = Index ab oben links, "i" wird
+  NICHT übersprungen (nur die Brett-Beschriftung A-H, J-T tut das), y = 0 ist die
+  oberste Reihe (19), passend zu `board[y][x]`.
 - `src/model/OgsTvSource.js` — anonymer OGS-REST-Adapter zu GameChannel, 5-s-Polling
   (ein Request) nur für `ogs_game_id` aus einem Kalender-Event und nur bei geöffnetem
   Stream; stoppt bei Partieende. OGS liefert das SGF laufender Partien anonym NICHT

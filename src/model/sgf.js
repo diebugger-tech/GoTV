@@ -10,15 +10,14 @@ export class SgfParseError extends Error {
   }
 }
 
-function sgfCharToIndex(c: string, skipI: boolean): number {
-  let idx = c.toLowerCase().charCodeAt(0) - "a".charCodeAt(0);
-  if (skipI && c.toLowerCase() > "i") {
-    idx -= 1;
-  }
-  return idx;
+// SGF points count a, b, c, ... from the top left corner. Unlike the board's
+// column labels (A-H, J-T) SGF does not skip "i", and board[y][x] has y = 0
+// at the top as well - so both letters map straight to their index.
+function sgfCharToIndex(c: string): number {
+  return c.toLowerCase().charCodeAt(0) - "a".charCodeAt(0);
 }
 
-function parseLoc(value: string, size: number, skipI: boolean): SgfLoc {
+function parseLoc(value: string, size: number): SgfLoc {
   let trimmed = value.trim();
   if (!trimmed || trimmed.toLowerCase() === "tt") {
     return "PASS";
@@ -26,8 +25,8 @@ function parseLoc(value: string, size: number, skipI: boolean): SgfLoc {
   if (trimmed.length < 2) {
     throw new SgfParseError("Invalid coordinate: " + JSON.stringify(value));
   }
-  let x = sgfCharToIndex(trimmed[0], skipI);
-  let y = size - 1 - sgfCharToIndex(trimmed[1], skipI);
+  let x = sgfCharToIndex(trimmed[0]);
+  let y = sgfCharToIndex(trimmed[1]);
   if (x < 0 || x >= size || y < 0 || y >= size) {
     throw new SgfParseError(
       "Coordinate out of range for board size " + size + ": " + value
@@ -69,9 +68,8 @@ class SgfParser {
   _komi: number;
   _handicap: ?number;
   _rules: GameRuleSet;
-  _skipI: boolean;
 
-  constructor(text: string, options?: { skipI?: boolean }) {
+  constructor(text: string) {
     this._text = text;
     this._pos = 0;
     this._nodes = [];
@@ -79,7 +77,6 @@ class SgfParser {
     this._komi = 6.5;
     this._handicap = null;
     this._rules = "japanese";
-    this._skipI = !options || options.skipI !== false;
   }
 
   parse(): GameTree {
@@ -308,7 +305,7 @@ class SgfParser {
       return values.map((value) => ({
         name: "MOVE",
         color,
-        loc: parseLoc(value, size, this._skipI),
+        loc: parseLoc(value, size),
       }));
     }
     if (name === "AB" || name === "AW" || name === "AE") {
@@ -317,7 +314,7 @@ class SgfParser {
       return values.map((value) => ({
         name: "ADDSTONE",
         color,
-        loc: parseLoc(value, size, this._skipI),
+        loc: parseLoc(value, size),
       }));
     }
     if (name === "C") {
@@ -331,7 +328,7 @@ class SgfParser {
         }
         return {
           name: "LABEL",
-          loc: parseLoc(value.slice(0, sep), size, this._skipI),
+          loc: parseLoc(value.slice(0, sep), size),
           text: value.slice(sep + 1),
         };
       });
@@ -340,7 +337,7 @@ class SgfParser {
     if (markName) {
       return values.map((value) => ({
         name: markName,
-        loc: parseLoc(value, size, this._skipI),
+        loc: parseLoc(value, size),
       }));
     }
     // Everything else (PB, PW, RE, DT, EV, ...) - keep as text props
@@ -348,8 +345,8 @@ class SgfParser {
   }
 }
 
-export function parseSgf(sgf: string, options?: { skipI?: boolean }): GameTree {
-  return new SgfParser(sgf, options).parse();
+export function parseSgf(sgf: string): GameTree {
+  return new SgfParser(sgf).parse();
 }
 
 // Convenience accessors for game info props on the root node

@@ -45,11 +45,11 @@ describe("parseSgf - AlphaGo vs Lee Sedol 2016 game 1 (19x19, with variation)", 
     expect(getSgfRootProp(tree, "RE")).toBe("W+R");
   });
 
-  it("parses the first move qd to board coordinates (15,15)", () => {
+  it("parses the first move qd (R16) to board coordinates (16,3)", () => {
     let props = firstMoveProps(tree);
     let move = props.find((p) => p.name === "MOVE");
     expect(move.color).toBe("black");
-    expect(move.loc).toEqual({ x: 15, y: 15 });
+    expect(move.loc).toEqual({ x: 16, y: 3 });
   });
 
   it("keeps the variation after move 10 as a second child", () => {
@@ -59,7 +59,7 @@ describe("parseSgf - AlphaGo vs Lee Sedol 2016 game 1 (19x19, with variation)", 
     let variantNode = tree.nodes[node10.children[1]];
     let variantMove = variantNode.props.find((p) => p.name === "MOVE");
     expect(variantMove.color).toBe("black");
-    expect(variantMove.loc).toEqual({ x: 14, y: 16 }); // pc
+    expect(variantMove.loc).toEqual({ x: 15, y: 2 }); // pc = Q17
   });
 
   it("computes board state for the whole main line", () => {
@@ -89,7 +89,7 @@ describe("parseSgf - Yasuda vs Ito 1840 (19x19, 3-stone handicap)", () => {
     expect(
       stones.every((p) => p.color === "black" && typeof p.loc === "object")
     ).toBe(true);
-    expect(stones[0].loc).toEqual({ x: 3, y: 15 }); // dd
+    expect(stones[0].loc).toEqual({ x: 3, y: 3 }); // dd = D16
   });
 
   it("shows handicap stones on the initial board", () => {
@@ -129,26 +129,43 @@ describe("parseSgf - Takao vs So 2014 (13x13)", () => {
     expect(tree.computedState[tree.rootNode].board.length).toBe(13);
   });
 
-  it("parses the first move jd to (8,9)", () => {
+  it("parses the first move jd (K10) to (9,3)", () => {
     let props = firstMoveProps(tree);
     let move = props.find((p) => p.name === "MOVE");
-    expect(move.loc).toEqual({ x: 8, y: 9 });
+    expect(move.loc).toEqual({ x: 9, y: 3 });
   });
 });
 
 describe("parseSgf - passes and errors", () => {
-  it("supports standard SGF coordinates without skipping i", () => {
-    let tree = parseSgf("(;SZ[19];B[ij])", { skipI: false });
+  // SGF counts a-s from the top left and, unlike the board labels, does not
+  // skip "i"; board[y][x] also has y = 0 at the top (row 19).
+  it.each([
+    ["aa", { x: 0, y: 0 }], // A19
+    ["ia", { x: 8, y: 0 }], // J19
+    ["ja", { x: 9, y: 0 }], // K19
+    ["sa", { x: 18, y: 0 }], // T19
+    ["ai", { x: 0, y: 8 }], // A11
+    ["aj", { x: 0, y: 9 }], // A10
+    ["ss", { x: 18, y: 18 }], // T1
+    ["pd", { x: 15, y: 3 }], // Q16
+  ])("maps the standard SGF point %s to the board", (point, loc) => {
+    let tree = parseSgf("(;SZ[19];B[" + point + "])");
     let firstNode = tree.nodes[tree.rootNode].children[0];
     let move = tree.nodes[firstNode].props.find((p) => p.name === "MOVE");
-    expect(move.loc).toEqual({ x: 8, y: 9 });
+    expect(move.loc).toEqual(loc);
+  });
+
+  it("puts a stone where the board draws it: top right for qd", () => {
+    let tree = parseSgf("(;SZ[19];B[qd])");
+    let board = tree.computedState[tree.currentLine[1]].board;
+    expect(board[3][16]).toBe("black");
   });
 
   it("treats empty and tt values as pass", () => {
     let tree = parseSgf("(;GM[1]SZ[19];B[aa];W[];B[tt])");
     let node1 = tree.nodes[tree.rootNode].children[0];
     let move1 = tree.nodes[node1].props.find((p) => p.name === "MOVE");
-    expect(move1.loc).toEqual({ x: 0, y: 18 });
+    expect(move1.loc).toEqual({ x: 0, y: 0 });
     let node2 = tree.nodes[node1].children[0];
     let move2 = tree.nodes[node2].props.find((p) => p.name === "MOVE");
     expect(move2.loc).toBe("PASS");

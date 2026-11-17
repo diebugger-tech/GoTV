@@ -95,7 +95,7 @@ describe("OgsTvSource game adapter", () => {
     expect(game.tree.messages[2][0].body).toBe("Erster Kommentar zum Zug");
     let state = game.tree.computedState[game.tree.activeNode];
     expect(state.board[9][8]).toBe("black");
-    expect(state.board[18][0]).toBe("white");
+    expect(state.board[0][0]).toBe("white");
   });
 
   it("builds a running game from the detail response when OGS withholds the SGF", () => {
@@ -117,9 +117,10 @@ describe("OgsTvSource game adapter", () => {
     expect(game.score).toBe(undefined);
     expect(game.sgfUrl).toBe(undefined);
     let state = game.tree.computedState[game.tree.activeNode];
+    // OGS x/y count from the top left, like the board: [15, 3] is Q16.
     expect(state.board[9][8]).toBe("black");
-    expect(state.board[18][0]).toBe("white");
-    expect(state.board[15][15]).toBe("black");
+    expect(state.board[0][0]).toBe("white");
+    expect(state.board[3][15]).toBe("black");
     expect(game.tree.messages[game.tree.activeNode]).toEqual([]);
   });
 

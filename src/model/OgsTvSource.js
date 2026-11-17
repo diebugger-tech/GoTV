@@ -100,7 +100,7 @@ export function parseOgsGame(
   sgf?: ?string,
   now?: number
 ): GameChannel {
-  let tree = parseSgf(sgf || buildOgsSgf(data), { skipI: false });
+  let tree = parseSgf(sgf || buildOgsSgf(data));
   let gameId = Number(data.id);
   let rawPlayers = data.players || {};
   let players = {
