@@ -139,6 +139,7 @@ function getBroadcastStatus(games: Array<GameChannel>): string {
 export default class BroadcastCard extends Component<Props, State> {
   _releaseOgs: ?() => void;
   _root: ?HTMLElement;
+  _draggingSplit: boolean = false;
   _delayTimer: ?IntervalID;
   _delayBuffers: { [gameKey: string]: DelayBuffer<GameChannel> } = {};
   state = {
@@ -207,13 +208,69 @@ export default class BroadcastCard extends Component<Props, State> {
   };
 
   _onChangeCinemaSplit = (e: Object) => {
-    let cinemaSplit = clampSplit(e.target.value);
+    this._setSplit(clampSplit(e.target.value));
+  };
+
+  _setSplit = (cinemaSplit: number) => {
     this.setState({ cinemaSplit });
     try {
       window.localStorage.setItem(CINEMA_SPLIT_KEY, String(cinemaSplit));
     } catch (err) {
       // Not remembered without storage.
     }
+  };
+
+  _onStartSplit = (e: Object) => {
+    if (e.button !== 0) {
+      return;
+    }
+    e.preventDefault();
+    this._draggingSplit = true;
+    // Capture keeps the divider draggable even across the video iframe.
+    if (typeof e.currentTarget.setPointerCapture === "function") {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    }
+  };
+
+  _onDragSplit = (e: Object) => {
+    if (!this._draggingSplit || !this._root) {
+      return;
+    }
+    let rect = this._root.getBoundingClientRect();
+    if (rect.width > 0) {
+      this._setSplit(
+        Math.max(
+          CINEMA_SPLIT_MIN,
+          Math.min(
+            CINEMA_SPLIT_MAX,
+            Math.round((100 * (e.clientX - rect.left)) / rect.width)
+          )
+        )
+      );
+    }
+  };
+
+  _onEndSplit = () => {
+    this._draggingSplit = false;
+  };
+
+  _onSplitKeyDown = (e: Object) => {
+    let value = this.state.cinemaSplit;
+    if (e.key === "ArrowLeft") {
+      value = Math.max(CINEMA_SPLIT_MIN, value - 2);
+    } else if (e.key === "ArrowRight") {
+      value = Math.min(CINEMA_SPLIT_MAX, value + 2);
+    } else if (e.key === "Home") {
+      value = CINEMA_SPLIT_MIN;
+    } else if (e.key === "End") {
+      value = CINEMA_SPLIT_MAX;
+    } else {
+      return;
+    }
+    e.preventDefault();
+    e.stopPropagation(); // Arrow keys resize here instead of navigating moves.
+    e.nativeEvent.stopImmediatePropagation(); // BoardNav also listens on document.
+    this._setSplit(value);
   };
 
   _onChangeDelay = (e: Object) => {
@@ -600,10 +657,29 @@ export default class BroadcastCard extends Component<Props, State> {
         className={className}
         ref={this._setRootRef}
         style={
-          cinema && showVideo
+          inline && showVideo
             ? { gridTemplateColumns: cinemaSplit + "% minmax(0, 1fr)" }
             : undefined
         }>
+        {inline && showVideo && (games.length || recordingUrl) ? (
+          <div
+            className="BroadcastCard-splitter"
+            role="separator"
+            aria-label="Größe von Video und Brett ändern"
+            aria-orientation="vertical"
+            aria-valuemin={CINEMA_SPLIT_MIN}
+            aria-valuemax={CINEMA_SPLIT_MAX}
+            aria-valuenow={cinemaSplit}
+            tabIndex={0}
+            style={{ left: cinemaSplit + "%" }}
+            onPointerDown={this._onStartSplit}
+            onPointerMove={this._onDragSplit}
+            onPointerUp={this._onEndSplit}
+            onPointerCancel={this._onEndSplit}
+            onLostPointerCapture={this._onEndSplit}
+            onKeyDown={this._onSplitKeyDown}
+          />
+        ) : null}
         {cinema ? (
           <div className="BroadcastCard-cinema-bar">
             <div className="BroadcastCard-cinema-title">{event.name}</div>

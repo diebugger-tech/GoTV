@@ -372,6 +372,78 @@ describe("BroadcastCard live status", () => {
     expect(container.querySelector("iframe")).not.toBe(null);
   });
 
+  it("resizes video and board by dragging without reloading either one", () => {
+    let saved = window.localStorage.getItem("gotv.cinemaSplit");
+    window.localStorage.removeItem("gotv.cinemaSplit");
+    try {
+      render([{ ...game, tree: parseSgf("(;SZ[9];B[aa];W[bb])") }], {
+        currentUser: { name: "viewer" },
+        actions: { onObserveTvGame: jest.fn(() => () => {}) },
+      });
+      act(() => container.querySelector(".StreamEmbed-actions button").click());
+      let root = container.querySelector(".BroadcastCard");
+      let divider = container.querySelector('[role="separator"]');
+      expect(divider).not.toBe(null);
+      jest
+        .spyOn(root, "getBoundingClientRect")
+        .mockReturnValue({ left: 100, width: 1000 });
+      let iframe = container.querySelector("iframe");
+      let board = container.querySelector(".TvGamePanel");
+      act(() => container.querySelector(".BoardNav-next").click());
+      let move = container.querySelector(".BoardNav-move").textContent;
+      act(() => {
+        divider.dispatchEvent(
+          new MouseEvent("pointerdown", {
+            bubbles: true,
+            button: 0,
+            clientX: 700,
+          })
+        );
+        divider.dispatchEvent(
+          new MouseEvent("pointermove", { bubbles: true, clientX: 800 })
+        );
+        divider.dispatchEvent(
+          new MouseEvent("pointerup", { bubbles: true, clientX: 800 })
+        );
+      });
+      expect(root.style.gridTemplateColumns).toBe("70% minmax(0, 1fr)");
+      expect(divider.getAttribute("aria-valuenow")).toBe("70");
+      expect(window.localStorage.getItem("gotv.cinemaSplit")).toBe("70");
+      act(() => {
+        divider.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })
+        );
+      });
+      expect(root.style.gridTemplateColumns).toBe("68% minmax(0, 1fr)");
+      expect(container.querySelector(".BoardNav-move").textContent).toBe(move);
+      act(() => container.querySelector(".BroadcastCard-cinema-enter").click());
+      act(() => {
+        divider.dispatchEvent(
+          new MouseEvent("pointerdown", {
+            bubbles: true,
+            button: 0,
+            clientX: 780,
+          })
+        );
+        divider.dispatchEvent(
+          new MouseEvent("pointermove", { bubbles: true, clientX: 5000 })
+        );
+        divider.dispatchEvent(
+          new MouseEvent("pointerup", { bubbles: true, clientX: 5000 })
+        );
+      });
+      expect(root.style.gridTemplateColumns).toBe("80% minmax(0, 1fr)");
+      expect(container.querySelector("iframe")).toBe(iframe);
+      expect(container.querySelector(".TvGamePanel")).toBe(board);
+    } finally {
+      if (saved === null) {
+        window.localStorage.removeItem("gotv.cinemaSplit");
+      } else {
+        window.localStorage.setItem("gotv.cinemaSplit", saved);
+      }
+    }
+  });
+
   it("opens a recording anonymously without joining KGS and keeps its replay position", async () => {
     let oldFetch = global.fetch;
     global.fetch = jest.fn(() =>

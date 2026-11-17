@@ -203,6 +203,12 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   localStorage), Chat einklappbar, Esc beendet. Es wechseln nur CSS-Klassen, das
   Stream-Iframe wird nicht neu geladen. Nach Layoutwechsel wird ein `resize`-Event
   ausgelöst, weil `BoardContainer` seine Größe nur darauf neu misst.
+- Ziehbare Trennkante (`BroadcastCard-splitter`) auch in der Grundansicht:
+  Pointer-Capture hält den Griff beim Ziehen über das Iframe; Pfeiltasten ändern
+  die Aufteilung ohne Zugnavigation. Beide Ansichten teilen `gotv.cinemaSplit`.
+- Eingebettetes SGF-Brett (`.SgfReplay-compact`): eigener quadratischer Container
+  mit vollständigem Inset/Padding-Reset. Die globale Desktop-Regel für
+  `.GameScreen-board-container` reserviert sonst 350 px für die Watch-Seitenleiste.
 - Video-Umschaltung (`BroadcastCard`): Übertragungen öffnen nach Klick mit Video;
   "Nur Brett" entfernt den Player samt Ton, "Video zuschalten" lädt ihn wieder.
   Brettposition und Verbindung bleiben erhalten. Gilt auch im Kinomodus.

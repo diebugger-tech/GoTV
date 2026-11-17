@@ -188,6 +188,7 @@
 }
 
 .BroadcastCard {
+  position: relative;
   border-bottom: 2px solid $very-muted;
 
   &-open {
@@ -233,6 +234,11 @@
     max-width: 680px;
     margin: 0 auto;
   }
+
+  .SgfReplay-compact {
+    max-width: calc(100vh - 190px);
+    margin: 0 auto;
+  }
 }
 
 .CinemaExample {
@@ -255,6 +261,60 @@
 
   .SgfReplay-board-container {
     min-height: 0;
+  }
+}
+
+// Embedded replay boards own their entire column. GameScreen's desktop
+// layout otherwise reserves 350px for a sidebar that is not present here.
+.SgfReplay-compact .SgfReplay-board-container {
+  height: 0;
+  padding-top: 100%;
+  min-height: 0;
+  max-height: none;
+
+  .GameScreen-board-container {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding: 0;
+    background: transparent;
+  }
+}
+
+.BroadcastCard-splitter {
+  position: absolute;
+  z-index: 4;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  transform: translateX(-50%);
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+
+  &:after {
+    content: "";
+    position: absolute;
+    top: calc(50% - 24px);
+    left: 4px;
+    width: 4px;
+    height: 48px;
+    border-radius: 3px;
+    background: $link-color;
+  }
+
+  &:hover,
+  &:focus {
+    outline: 2px solid $link-color;
+    outline-offset: -3px;
+  }
+}
+
+@media only screen and (max-width: 800px) {
+  .BroadcastCard-splitter {
+    display: none;
   }
 }
 
@@ -736,11 +796,13 @@ $cinema-bar-height: 44px;
   }
 
   .SgfReplay-compact {
-    .SgfReplay-board-container {
-      height: calc(100vh - 190px);
-      min-height: 0;
-      max-height: none;
-    }
+    max-width: calc(100vh - 190px);
+    margin: 0 auto;
+  }
+
+  .BroadcastCard-splitter {
+    display: block;
+    top: $cinema-bar-height;
   }
 
   &-nochat {
