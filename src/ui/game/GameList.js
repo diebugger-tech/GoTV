@@ -4,12 +4,14 @@ import { A } from "../common";
 import GameTypeIcon from "./GameTypeIcon";
 import GamePlayersList from "./GamePlayersList";
 import GameRulesDisplay from "./GameRulesDisplay";
+import TvSourceBadge from "../tv/TvSourceBadge";
 import { formatGameScore, getWinningColor } from "../../model/game";
 import type { GameChannel, GameFilter, Room, Index } from "../../model";
 
 type Props = {
   game: GameChannel,
   room: ?Room,
+  showSource?: boolean,
   onSelect: (number, GameChannel) => any,
 };
 
@@ -48,6 +50,11 @@ class GameListItem extends Component<Props> {
           />
         </div>
         <div className="GameList-item-info">
+          {this.props.showSource ? (
+            <div className="GameList-item-source">
+              <TvSourceBadge game={game} />
+            </div>
+          ) : null}
           {game.over && game.score ? (
             <div className="GameList-item-result">
               {formatGameScore(game.score)}
@@ -87,6 +94,8 @@ type GameListProps = {
   games: Array<GameChannel>,
   filter?: GameFilter,
   roomsById?: Index<Room>,
+  // TV only: label each board with the server it comes from (KGS/OGS).
+  showSource?: boolean,
   onSelect: (number, GameChannel) => any,
 };
 
@@ -141,6 +150,7 @@ export default class GameList extends Component<GameListProps, State> {
               key={(game.tvSource || "kgs") + "-" + game.id}
               game={game}
               room={roomsById ? roomsById[game.roomId] : null}
+              showSource={this.props.showSource}
               onSelect={onSelect}
             />
           ))

@@ -211,6 +211,7 @@ export default class BroadcastCard extends Component<Props, State> {
             <GameList
               games={games}
               roomsById={roomsById}
+              showSource
               onSelect={this._onSelectBoard}
             />
           ) : null}

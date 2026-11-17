@@ -8,6 +8,7 @@ import GameMoreMenu from "../game/GameMoreMenu";
 import GamePlayersInfo from "../game/GamePlayersInfo";
 import ChatMessageBar from "../chat/ChatMessageBar";
 import UserList from "../user/UserList";
+import TvSourceBadge from "./TvSourceBadge";
 import { A } from "../common";
 import {
   formatGameScore,
@@ -135,6 +136,7 @@ export default class TvGamePanel extends Component<Props, State> {
     return (
       <div className="TvGamePanel">
         <div className="TvGamePanel-game-header">
+          <TvSourceBadge game={game} />
           <div className="TvGamePanel-game-score">
             {game.over || game.score
               ? (game.over ? "Game Over" : "") +
@@ -214,7 +216,11 @@ export default class TvGamePanel extends Component<Props, State> {
             />
           ) : (
             <div className="TvGamePanel-notice">
-              {tree ? "Noch keine Chatnachrichten." : "Chat wird geladen …"}
+              {!tree
+                ? "Chat wird geladen …"
+                : game.tvSource === "ogs" && !game.over
+                ? "OGS zeigt den Partiechat anonym erst nach Partieende."
+                : "Noch keine Chatnachrichten."}
             </div>
           )}
         </div>

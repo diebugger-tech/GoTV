@@ -280,6 +280,18 @@ describe("BroadcastCard live status", () => {
     expect(container.querySelector(".TvGamePanel")).not.toBe(null);
     expect(container.textContent).toContain("OGS-Partiechat");
     expect(
+      Array.from(
+        container.querySelectorAll(".GameList-item .TvSourceBadge")
+      ).map((badge) => badge.textContent)
+    ).toEqual(["KGS", "OGS"]);
+    expect(
+      container.querySelector(".TvGamePanel-game-header .TvSourceBadge")
+        .textContent
+    ).toBe("OGS");
+    expect(container.textContent).toContain(
+      "OGS zeigt den Partiechat anonym erst nach Partieende."
+    );
+    expect(
       container.querySelectorAll(".TvGamePanel-board .Board-stone-black")
     ).toHaveLength(1);
     expect(container.querySelector(".GamePlayersInfo")).not.toBe(null);
