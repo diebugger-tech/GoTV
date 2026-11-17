@@ -31,9 +31,7 @@ function getBoardStatus(
       total +
       (total === 1 ? " " + source + "Brett" : " " + source + "Bretter") +
       mixed +
-      // OGS shows its game chat to anonymous clients only after the game.
-      " · Live-Züge" +
-      (kgsCount ? " und Partiechat" : "")
+      " · Live-Züge und Partiechat"
     );
   }
   if (event.sgf_url) {

@@ -1,6 +1,12 @@
 // @flow
 import { parseSgf, getSgfRootProp } from "./sgf";
-import { buildOgsSgf, getOgsTimeRules, parseOgsClocks } from "./OgsGameData";
+import {
+  buildOgsSgf,
+  getOgsChatText,
+  getOgsTimeRules,
+  parseOgsClocks,
+} from "./OgsGameData";
+import { OgsRealtime } from "./OgsRealtime";
 import { pickOgsGameId } from "./OgsGameFinder";
 import {
   getLiveEvents,
@@ -27,6 +33,10 @@ const OGS_API_URL = "https://online-go.com/api/v1/games/";
 const OGS_PLAYERS_URL = "https://online-go.com/api/v1/players/";
 // How often a broadcast that names its players looks for their (next) game.
 const DEFAULT_FIND_INTERVAL_MS = 15000;
+// While the real-time connection delivers a running game, REST is only a
+// safety net: every 12th poll (once a minute at the default interval).
+const LIVE_REST_EVERY_N_POLLS = 12;
+const LIVE_CHAT_CHANNELS = ["main", "spectator"];
 const FIND_PAGE_SIZE = 10;
 // One anonymous request per poll while a game runs (see fetchGame).
 const DEFAULT_POLL_INTERVAL_MS = 5000;
@@ -37,6 +47,15 @@ type OgsEntry = {
   listeners: Set<OgsGameListener>,
   timer: ?IntervalID,
   loading: boolean,
+  // Last REST detail response and, once the game has ended, its SGF.
+  data: ?Object,
+  sgf: ?string,
+  // Game state pushed over the real-time connection; null while offline.
+  liveGamedata: ?Object,
+  // Live chat lines; null until the real-time connection delivered chat.
+  chat: ?Array<Object>,
+  skippedPolls: number,
+  releaseLive: ?() => void,
 };
 
 export function parseOgsScore(result: ?string): ?GameScore {
@@ -99,13 +118,40 @@ function getOgsPlayer(raw: Object, rank: ?string): User {
   };
 }
 
+// Live chat lines from the real-time connection, attached to the move they
+// were written at.
+function addOgsLiveChat(tree: GameTree, gameId: number, lines: Array<Object>) {
+  let lastIndex = tree.currentLine.length - 1;
+  for (let nodeId of tree.currentLine) {
+    tree.messages[nodeId] = [];
+  }
+  for (let line of lines) {
+    let body = getOgsChatText(line.body);
+    if (!body) {
+      continue;
+    }
+    let moveNumber =
+      typeof line.move_number === "number" ? line.move_number : 0;
+    let index = Math.min(Math.max(0, moveNumber), lastIndex);
+    tree.messages[tree.currentLine[index]].push({
+      id: "ogs-" + gameId + "-" + String(line.chat_id),
+      sender: line.username || "?",
+      body,
+      date: typeof line.date === "number" ? new Date(line.date * 1000) : null,
+    });
+  }
+}
+
 // sgf: OGS' own SGF export, which anonymous clients only get once the game
 // has ended (it carries the game chat). Without it the tree is built from the
 // moves in the detail response, so a running game still shows its board.
+// chat: live chat lines from the real-time connection; they replace the
+// chat comments of the SGF.
 export function parseOgsGame(
   data: Object,
   sgf?: ?string,
-  now?: number
+  now?: number,
+  chat?: ?Array<Object>
 ): GameChannel {
   let tree = parseSgf(sgf || buildOgsSgf(data));
   let gameId = Number(data.id);
@@ -135,7 +181,11 @@ export function parseOgsGame(
 
   tree.activeNode = tree.currentLine[tree.currentLine.length - 1];
   tree.currentNode = tree.activeNode;
-  addOgsChatMessages(tree, gameId);
+  if (chat) {
+    addOgsLiveChat(tree, gameId, chat);
+  } else {
+    addOgsChatMessages(tree, gameId);
+  }
   let moveNum = tree.currentLine.reduce(
     (count, nodeId) =>
       count +
@@ -153,7 +203,7 @@ export function parseOgsGame(
     rules,
     tree,
     event: true,
-    over: !!data.ended,
+    over: !!data.ended || (data.gamedata || {}).phase === "finished",
     paused: !!(data.gamedata && data.gamedata.phase === "paused"),
     tvSource: "ogs",
   };
@@ -183,12 +233,17 @@ export class OgsTvSource implements TvSource {
   _entries: { [number]: OgsEntry } = {};
   _gamesById: { [number]: GameChannel } = {};
   _playerIds: { [name: string]: Promise<number> } = {};
+  _realtime: ?OgsRealtime;
 
+  // realtime: pushes moves, clocks and chat of observed games. Without it
+  // (tests, or no WebSocket) everything comes from REST polling alone.
   constructor(
     fetchFn?: Fetch,
     pollIntervalMs?: number,
-    findIntervalMs?: number
+    findIntervalMs?: number,
+    realtime?: ?OgsRealtime
   ) {
+    this._realtime = realtime || null;
     this._fetch =
       fetchFn ||
       ((url, options) => fetch(url, { ...options, credentials: "omit" }));
@@ -246,17 +301,23 @@ export class OgsTvSource implements TvSource {
   // A running game needs only the detail request. The SGF (with the chat) is
   // fetched once the game has ended; if that fails the board still comes
   // from the detail response.
-  fetchGame(gameId: number): Promise<GameChannel> {
+  _fetchRaw(gameId: number): Promise<{ data: Object, sgf: ?string }> {
     let url = OGS_API_URL + gameId;
     return this._fetchJson(url).then((data) => {
       if (!data.ended) {
-        return parseOgsGame(data);
+        return { data, sgf: null };
       }
       return this._fetch(url + "/sgf", { credentials: "omit" })
         .then((response) => (response.ok ? response.text() : null))
         .catch(() => null)
-        .then((sgf) => parseOgsGame(data, sgf));
+        .then((sgf) => ({ data, sgf }));
     });
+  }
+
+  fetchGame(gameId: number): Promise<GameChannel> {
+    return this._fetchRaw(gameId).then(({ data, sgf }) =>
+      parseOgsGame(data, sgf)
+    );
   }
 
   _fetchJson(url: string): Promise<Object> {
@@ -391,14 +452,25 @@ export class OgsTvSource implements TvSource {
         listeners: new Set(),
         timer: null,
         loading: false,
+        data: null,
+        sgf: null,
+        liveGamedata: null,
+        chat: null,
+        skippedPolls: 0,
+        releaseLive: null,
       };
       entry = newEntry;
       this._entries[gameId] = entry;
       entry.timer = setInterval(
-        () => this._refresh(gameId),
+        () => this._refresh(gameId, false),
         this._pollIntervalMs
       );
-      this._refresh(gameId);
+      if (this._realtime) {
+        entry.releaseLive = this._realtime.watch(gameId, (event, data) =>
+          this._onLive(gameId, event, data)
+        );
+      }
+      this._refresh(gameId, true);
     }
     entry.listeners.add(listener);
     let cached = this._gamesById[gameId];
@@ -420,30 +492,131 @@ export class OgsTvSource implements TvSource {
         if (current.timer) {
           clearInterval(current.timer);
         }
+        if (current.releaseLive) {
+          current.releaseLive();
+        }
         delete this._entries[gameId];
       }
     };
   }
 
-  _refresh(gameId: number) {
+  // Builds the game from the REST detail plus whatever the real-time
+  // connection has delivered since, and hands it to the listeners.
+  _publish(gameId: number) {
+    let entry = this._entries[gameId];
+    if (!entry || !entry.data) {
+      return;
+    }
+    let data = entry.data;
+    if (entry.liveGamedata && !data.ended) {
+      data = { ...data, gamedata: entry.liveGamedata };
+    }
+    let game = parseOgsGame(data, entry.sgf, undefined, entry.chat);
+    this._gamesById[gameId] = game;
+    entry.listeners.forEach((listener) => listener(game, null));
+  }
+
+  // Drops the pushed state and asks OGS for the full game again - after an
+  // undo or a missed move the local move list can no longer be trusted.
+  _resync(gameId: number, entry: OgsEntry) {
+    entry.liveGamedata = null;
+    if (this._realtime) {
+      this._realtime.resync(gameId);
+    }
+    this._refresh(gameId, true);
+  }
+
+  _onLive(gameId: number, event: string, data: any) {
+    let entry = this._entries[gameId];
+    if (!entry) {
+      return;
+    }
+    let live = entry.liveGamedata;
+    if (event === "gamedata" && data) {
+      entry.liveGamedata = data;
+    } else if (event === "move" && live && data) {
+      let moves = Array.isArray(live.moves) ? live.moves : [];
+      if (data.move_number === moves.length + 1) {
+        entry.liveGamedata = { ...live, moves: [...moves, data.move] };
+      } else if (data.move_number > moves.length + 1) {
+        this._resync(gameId, entry);
+        return;
+      } else {
+        return; // already known
+      }
+    } else if (event === "clock" && live && data) {
+      entry.liveGamedata = { ...live, clock: data };
+    } else if (event === "phase" && live) {
+      entry.liveGamedata = { ...live, phase: data };
+      if (data === "finished") {
+        // The final result and the SGF come from REST.
+        this._refresh(gameId, true);
+      }
+    } else if (event === "undo_accepted") {
+      this._resync(gameId, entry);
+      return;
+    } else if (event === "reset-chats") {
+      entry.chat = [];
+    } else if (event === "chat" && data && data.line) {
+      if (LIVE_CHAT_CHANNELS.indexOf(data.channel) === -1) {
+        return;
+      }
+      let line = data.line;
+      entry.chat = (entry.chat || [])
+        .filter((known) => known.chat_id !== line.chat_id)
+        .concat([line]);
+    } else if (event === "chat/remove" && data && entry.chat) {
+      let removed = Array.isArray(data.chat_ids) ? data.chat_ids : [];
+      entry.chat = entry.chat.filter(
+        (known) => removed.indexOf(known.chat_id) === -1
+      );
+    } else if (event === "offline") {
+      // REST polling takes over at its full rate until OGS pushes again.
+      entry.liveGamedata = null;
+      return;
+    } else {
+      return;
+    }
+    this._publish(gameId);
+  }
+
+  // force: fetch now. Otherwise a running game that the real-time
+  // connection delivers is fetched only every LIVE_REST_EVERY_N_POLLS polls.
+  _refresh(gameId: number, force: boolean) {
     let entry = this._entries[gameId];
     if (!entry || entry.loading) {
       return;
     }
+    let live = entry.liveGamedata;
+    if (!force && live && live.phase !== "finished") {
+      entry.skippedPolls++;
+      if (entry.skippedPolls < LIVE_REST_EVERY_N_POLLS) {
+        return;
+      }
+    }
+    entry.skippedPolls = 0;
     entry.loading = true;
-    this.fetchGame(gameId).then(
-      (game) => {
-        this._gamesById[gameId] = game;
+    this._fetchRaw(gameId).then(
+      ({ data, sgf }) => {
         let current = this._entries[gameId];
-        if (current) {
-          current.loading = false;
-          if (game.over && current.timer) {
-            // A finished game no longer changes: stop asking OGS.
+        if (!current) {
+          return;
+        }
+        current.loading = false;
+        current.data = data;
+        current.sgf = sgf;
+        if (data.ended) {
+          // A finished game no longer changes: stop asking OGS.
+          if (current.timer) {
             clearInterval(current.timer);
             current.timer = null;
           }
-          current.listeners.forEach((listener) => listener(game, null));
+          if (current.releaseLive) {
+            current.releaseLive();
+            current.releaseLive = null;
+          }
         }
+        this._publish(gameId);
       },
       (err) => {
         let current = this._entries[gameId];
@@ -460,4 +633,9 @@ export class OgsTvSource implements TvSource {
   }
 }
 
-export const ogsTvSource = new OgsTvSource();
+export const ogsTvSource = new OgsTvSource(
+  undefined,
+  undefined,
+  undefined,
+  new OgsRealtime()
+);

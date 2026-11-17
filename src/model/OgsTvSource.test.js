@@ -382,6 +382,151 @@ describe("OgsTvSource anonymous polling", () => {
     });
   });
 
+  describe("with the OGS real-time connection", () => {
+    let handler;
+    let releaseLive;
+    let realtime;
+    let fetchMock;
+    let listener;
+    let source;
+    let detail;
+
+    function lastGame() {
+      return listener.mock.calls[listener.mock.calls.length - 1][0];
+    }
+
+    beforeEach(async () => {
+      releaseLive = jest.fn();
+      realtime = {
+        watch: jest.fn((gameId, liveHandler) => {
+          handler = liveHandler;
+          return releaseLive;
+        }),
+        resync: jest.fn(),
+      };
+      detail = LIVE_DATA;
+      fetchMock = jest.fn((url) => Promise.resolve(responseFor(url, detail)));
+      source = new OgsTvSource(fetchMock, 1000, 3000, realtime);
+      listener = jest.fn();
+      source.observeGame(123, listener);
+      await flushPromises();
+    });
+
+    it("shows pushed moves, clocks and chat without asking REST again", () => {
+      expect(realtime.watch).toHaveBeenCalledWith(123, expect.any(Function));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      handler("gamedata", LIVE_DATA.gamedata);
+      handler("move", { game_id: 123, move_number: 4, move: [3, 3, 500] });
+      expect(lastGame().moveNum).toBe(4);
+      expect(
+        lastGame().tree.computedState[lastGame().tree.activeNode].board[3][3]
+      ).toBe("white");
+
+      handler("move", { game_id: 123, move_number: 4, move: [3, 3, 500] });
+      expect(lastGame().moveNum).toBe(4);
+
+      handler("clock", {
+        ...LIVE_DATA.gamedata.clock,
+        current_player: 1,
+        last_move: 2000000,
+        now: 2004000,
+      });
+      expect(lastGame().clocks.black).toMatchObject({
+        time: 116,
+        running: true,
+      });
+
+      handler("reset-chats");
+      handler("chat", {
+        channel: "main",
+        line: {
+          chat_id: "a",
+          body: "Guter Zug",
+          username: "Fan",
+          move_number: 4,
+          date: 1794946363,
+        },
+      });
+      handler("chat", {
+        channel: "spectator",
+        line: {
+          chat_id: "b",
+          body: { type: "translated", en: "Good luck" },
+          username: "Bot",
+          move_number: 0,
+        },
+      });
+      handler("chat", {
+        channel: "malkovich",
+        line: { chat_id: "c", body: "Geheim", username: "Spieler" },
+      });
+      handler("chat", {
+        channel: "main",
+        line: { chat_id: "d", body: { type: "analysis" }, username: "Fan" },
+      });
+      let tree = lastGame().tree;
+      expect(tree.messages[tree.currentLine[4]]).toEqual([
+        {
+          id: "ogs-123-a",
+          sender: "Fan",
+          body: "Guter Zug",
+          date: new Date(1794946363000),
+        },
+      ]);
+      expect(tree.messages[tree.currentLine[0]].map((m) => m.body)).toEqual([
+        "Good luck",
+      ]);
+      handler("chat/remove", { chat_ids: ["a"] });
+      expect(lastGame().tree.messages[tree.currentLine[4]]).toEqual([]);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("keeps REST as a slow safety net while OGS pushes, and at full rate when offline", async () => {
+      handler("gamedata", LIVE_DATA.gamedata);
+      jest.advanceTimersByTime(11000);
+      await flushPromises();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      jest.advanceTimersByTime(1000);
+      await flushPromises();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+
+      handler("offline", null);
+      jest.advanceTimersByTime(1000);
+      await flushPromises();
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+
+    it("asks for the full game again after a missed move or an undo", async () => {
+      handler("gamedata", LIVE_DATA.gamedata);
+      handler("move", { game_id: 123, move_number: 6, move: [5, 5, 100] });
+      expect(realtime.resync).toHaveBeenCalledWith(123);
+      await flushPromises();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(lastGame().moveNum).toBe(3);
+
+      handler("gamedata", LIVE_DATA.gamedata);
+      handler("undo_accepted", 2);
+      expect(realtime.resync).toHaveBeenCalledTimes(2);
+    });
+
+    it("takes result and SGF from REST once OGS reports the game finished", async () => {
+      handler("gamedata", LIVE_DATA.gamedata);
+      detail = ENDED_DATA;
+      handler("phase", "finished");
+      expect(lastGame().over).toBe(true);
+      await flushPromises();
+      expect(fetchMock.mock.calls.map((call) => call[0]).slice(1)).toEqual([
+        "https://online-go.com/api/v1/games/123",
+        "https://online-go.com/api/v1/games/123/sgf",
+      ]);
+      expect(lastGame()).toMatchObject({ over: true, score: "B+RESIGN" });
+      expect(releaseLive).toHaveBeenCalledTimes(1);
+      jest.advanceTimersByTime(20000);
+      await flushPromises();
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
+  });
+
   it("reports request errors without inventing a board", async () => {
     let fetchMock = jest.fn(() => Promise.resolve({ ok: false, status: 404 }));
     let source = new OgsTvSource(fetchMock, 1000);

@@ -288,9 +288,7 @@ describe("BroadcastCard live status", () => {
       container.querySelector(".TvGamePanel-game-header .TvSourceBadge")
         .textContent
     ).toBe("OGS");
-    expect(container.textContent).toContain(
-      "OGS zeigt den Partiechat anonym erst nach Partieende."
-    );
+    expect(container.textContent).toContain("Noch keine Chatnachrichten.");
     expect(
       container.querySelectorAll(".TvGamePanel-board .Board-stone-black")
     ).toHaveLength(1);

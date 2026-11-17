@@ -216,11 +216,7 @@ export default class TvGamePanel extends Component<Props, State> {
             />
           ) : (
             <div className="TvGamePanel-notice">
-              {!tree
-                ? "Chat wird geladen …"
-                : game.tvSource === "ogs" && !game.over
-                ? "OGS zeigt den Partiechat anonym erst nach Partieende."
-                : "Noch keine Chatnachrichten."}
+              {tree ? "Noch keine Chatnachrichten." : "Chat wird geladen …"}
             </div>
           )}
         </div>

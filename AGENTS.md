@@ -168,6 +168,15 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   laufende Partien kommen deshalb aus `gamedata` des Detail-Abrufs
   (`src/model/OgsGameData.js`: Züge → SGF-Text, Ränge, Uhren); das SGF mit dem
   Partiechat wird erst nach Partieende einmal geladen.
+- `src/model/OgsRealtime.js` — Gast-Verbindung zur dokumentierten OGS-Echtzeit-API
+  (WebSocket `wss://online-go.com`, Protokoll der offiziellen goban-Bibliothek,
+  `authenticate` mit leerem jwt, `game/connect {game_id, chat: true}`, Ping alle 10 s).
+  Liefert Züge, Uhren und Partiechat sofort; `OgsTvSource` mischt sie in die REST-Daten.
+  REST bleibt Rückfall: voller Takt ohne Verbindung, sonst nur jeder 12. Poll; Ergebnis
+  und SGF kommen nach Partieende weiter über REST. Gesendet wird nur Handshake,
+  connect/disconnect und Ping. Geprüft 17.11.2026: Doku nennt goban ausdrücklich als
+  Referenz für Third-Party-Clients, Gastzugang ist vorgesehen, die OGS-ToS enthalten
+  keine API-Klausel.
 - `src/model/OgsGameFinder.js` — `ogs_players` (OGS-Benutzernamen) im Kalender-Event als
   Alternative zur festen `ogs_game_id`: `OgsTvSource.observeEvent` sucht die Partie
   zwischen GENAU diesen Spielern, die im Live-Fenster des Events begonnen hat (laufende
@@ -180,7 +189,7 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   Beobachter-Komponenten wie GameScreen (GamePlayersInfo, GameInfo, UserList, GameChat,
   ChatMessageBar, GameMoreMenu); Zurückspulen bleibt bei Live-Updates erhalten,
   "letzter Zug" kehrt zum automatischen Folgen zurück. OGS-Chat ist anonym read-only
-  und erscheint erst nach Partieende; `game.sgfUrl` gibt GameMoreMenu die
+  (live über die Echtzeit-Verbindung, sonst erst nach Partieende aus dem SGF); `game.sgfUrl` gibt GameMoreMenu die
   quellenneutrale SGF-URL (bei OGS erst nach Partieende gesetzt).
 - `public/tv/events.json` — Event-Daten (fetch beim Öffnen des TV-Tabs).
 - Nav-Punkt "tv": types.js (NavOption) + index.js (isValidNav) + meta/Nav.js + Main.js.

@@ -144,6 +144,16 @@ export function buildOgsSgf(data: Object): string {
   );
 }
 
+// The text of a live chat line. Analysis variations and review links carry
+// no text and are skipped; system lines arrive as translated objects.
+export function getOgsChatText(body: mixed): ?string {
+  let text = body;
+  if (body && typeof body === "object" && body.type === "translated") {
+    text = body.en;
+  }
+  return typeof text === "string" && text.trim() ? text.trim() : null;
+}
+
 // Maps one OGS player clock onto the KGS-shaped ClockState that GameClock
 // renders: periodsLeft 0 means "still in main time", stonesLeft 0 means "no
 // overtime stones" (also used for Fischer/absolute, which have no overtime).
