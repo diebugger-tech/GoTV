@@ -17,7 +17,7 @@
       "platform": "other",
       "stream_url": "https://ini.hu-berlin.de/go/kranich/DE/ausschreibung.php",
       "region": "de",
-      "notes": "Internationales Alexander-Kurz-Gedenkturnier, Pokalturnier des Deutschen Go-Bundes, Humboldt-Universität Berlin. Kein Online-Stream bestätigt - Ausschreibung nennt nur Vor-Ort-Kommentierung. Läuft bei DGoB unter Kategorie 'deutschlandpokal', nicht unter den vom Importer gezogenen 3 Kategorien (go-bundesliga/online-turnier/deutsche-meisterschaft) - deshalb von Hand statt automatisch."
+      "notes": "Internationales Alexander-Kurz-Gedenkturnier, Pokalturnier des Deutschen Go-Bundes, Humboldt-Universität Berlin. Kein Online-Stream bestätigt - die Ausschreibung nennt nur Kommentierung vor Ort."
     },
     {
       "id": "grand-prix-zoledowo-2026",
@@ -396,7 +396,7 @@
         "id": "europeangofederation"
       },
       "region": "intl",
-      "notes": "Round of 16, Bo5, eskalierendes Zeitlimit (jede Partie 1 Min/1 Sek schneller). Bestätigt per speedgochampionship.com/bracket (Spielplan) und .../ (Format/Quellen). Bretter laufen auf online-go.com (OGS), nicht KGS. Die konkrete ogs_game_id wird ergänzt, sobald OGS die Partie veröffentlicht. Ggf. Duplikat, sobald der tägliche twitch-egf-Import diesen Termin selbst findet - dann zusammenführen/entfernen."
+      "notes": "Achtelfinale, Best of five, eskalierendes Zeitlimit (jede Partie 1 Min/1 Sek schneller). Die Bretter laufen auf online-go.com (OGS)."
     }
   ],
   "channels": [

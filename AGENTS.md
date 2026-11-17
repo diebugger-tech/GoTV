@@ -208,6 +208,18 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   Sekunden war. Verzögert wird der ganze Partie-Schnappschuss, also Züge, Ergebnis,
   Uhren, Chat, Brettliste und Statuszeile gemeinsam — nichts nimmt das Video vorweg.
   Gilt für KGS- und OGS-Bretter; ein 500-ms-Timer läuft nur bei Verzögerung > 0.
+- Kalender-Tab: `src/ui/tv/CalendarMonth.js` + `src/model/tvCalendar.js` — Monatsblatt
+  (Montag zuerst, mehrtägige Turniere als durchgehender Balken, "Heute", Blättern,
+  Klick auf einen Tag zeigt dessen Turnierkarten). `CalendarView` schaltet zwischen
+  "Monat" (Standard) und "Liste" (Regionen, Sender, Archiv) um, gemerkt in
+  `gotv.calendarView`.
+- Pflegehinweise zu Hand-Einträgen in `public/tv/events.json` (stehen bewusst NICHT in
+  den `notes`, die sieht der Zuschauer): `berliner-kranich-2026` ist von Hand
+  eingetragen, weil der DGoB-Importer die Kategorie 'deutschlandpokal' nicht zieht.
+  `speed-go-championship-2026-11-22-surma-ovsiienko` ist bestätigt per
+  speedgochampionship.com/bracket; findet der tägliche twitch-egf-Import den Termin
+  selbst, entsteht ein Duplikat - dann zusammenführen. OGS-Brett: `ogs_players` oder
+  Link an der Karte, sobald die OGS-Namen bekannt sind.
 - `src/ui/tv/TvSourceBadge.js` — Badge "KGS"/"OGS" an jedem Brett der TV-Brettliste
   (`GameList` mit `showSource`) und im Kopf von `TvGamePanel`. Watch bleibt ohne Badge.
 - `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben
