@@ -617,3 +617,128 @@
     color: $semi-muted;
   }
 }
+
+.BroadcastCard-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+
+  .BroadcastCard-cinema-enter {
+    margin: 6px 0;
+  }
+}
+
+// Kinomodus: the whole broadcast fills the window - stream left, board
+// right. Only classes change, so the stream iframe keeps playing.
+$cinema-bar-height: 44px;
+
+.BroadcastCard-cinema {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1000;
+  display: grid;
+  grid-template-rows: $cinema-bar-height minmax(0, 1fr);
+  align-items: stretch;
+  border: 0;
+  background: $content-bg;
+  overflow: hidden;
+
+  > .CalendarEvent {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    padding: 0;
+    background: #000;
+    overflow: hidden;
+
+    .CalendarEvent-header,
+    .CalendarEvent-date,
+    .CalendarEvent-notes,
+    .CalendarEvent-board-status,
+    .CalendarEvent-replay,
+    .StreamEmbed-external {
+      display: none;
+    }
+
+    .StreamEmbed {
+      width: 100%;
+      // Never taller than the window: 16:9 limited by the free height.
+      max-width: calc((100vh - #{$cinema-bar-height}) * 16 / 9);
+      margin: 0 auto;
+    }
+  }
+
+  > .BroadcastCard-boards {
+    min-width: 0;
+    overflow-y: auto;
+  }
+
+  .BroadcastCard-controls,
+  .BroadcastCard-link,
+  .BroadcastCard-boards-title,
+  .BroadcastCard-boards-status {
+    display: none;
+  }
+
+  // One board needs no list to choose from.
+  &-single .GameList {
+    display: none;
+  }
+
+  // Keep the whole board visible without scrolling.
+  .TvGamePanel-board-section {
+    max-width: calc(100vh - 330px);
+    margin: 0 auto;
+  }
+
+  &-boardonly {
+    grid-template-columns: minmax(0, 1fr);
+
+    > .CalendarEvent {
+      display: none;
+    }
+  }
+
+  &-nochat {
+    .TvGamePanel-tabs,
+    .TvGamePanel-chat-title,
+    .TvGamePanel-chat,
+    .ChatMessageBar {
+      display: none;
+    }
+  }
+
+  &-bar {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 10px;
+    background: $inverted-bg;
+    color: $inverted-fg;
+    font-size: 13px;
+  }
+
+  &-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    font-weight: bold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &-split {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    input {
+      width: 140px;
+    }
+  }
+}

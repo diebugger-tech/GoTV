@@ -35,7 +35,32 @@ type State = {
   linkFormOpen: boolean,
   linkInput: string,
   linkError: ?string,
+  // Kinomodus: stream and board fill the window side by side.
+  cinema: boolean,
+  cinemaSplit: number,
+  cinemaChatHidden: boolean,
 };
+
+const CINEMA_SPLIT_KEY = "gotv.cinemaSplit";
+// Share of the width the stream gets in Kinomodus, in percent.
+const CINEMA_SPLIT_DEFAULT = 60;
+const CINEMA_SPLIT_MIN = 30;
+const CINEMA_SPLIT_MAX = 80;
+
+function clampSplit(value: mixed): number {
+  let split = Number(value);
+  return split >= CINEMA_SPLIT_MIN && split <= CINEMA_SPLIT_MAX
+    ? split
+    : CINEMA_SPLIT_DEFAULT;
+}
+
+function loadCinemaSplit(): number {
+  try {
+    return clampSplit(window.localStorage.getItem(CINEMA_SPLIT_KEY));
+  } catch (err) {
+    return CINEMA_SPLIT_DEFAULT; // storage disabled
+  }
+}
 
 // What decides which OGS board an event shows.
 function getOgsAssignment(event: Object): string {
@@ -87,6 +112,7 @@ function getBroadcastStatus(games: Array<GameChannel>): string {
 // loads only while the broadcast is open and never requires a KGS login.
 export default class BroadcastCard extends Component<Props, State> {
   _releaseOgs: ?() => void;
+  _root: ?HTMLElement;
   state = {
     streamLoaded: false,
     streamKey: 0,
@@ -97,9 +123,82 @@ export default class BroadcastCard extends Component<Props, State> {
     linkFormOpen: false,
     linkInput: "",
     linkError: null,
+    cinema: false,
+    cinemaSplit: loadCinemaSplit(),
+    cinemaChatHidden: false,
   };
 
-  componentDidUpdate(prevProps: Props) {
+  componentDidMount() {
+    document.addEventListener("keydown", this._onKeyDown);
+    document.addEventListener("fullscreenchange", this._onFullscreenChange);
+  }
+
+  _setRootRef = (ref: HTMLElement | null) => {
+    this._root = ref;
+  };
+
+  _onEnterCinema = () => {
+    this.setState({ cinema: true });
+    // Real fullscreen where the browser allows it; the card fills the
+    // window either way.
+    let root: any = this._root;
+    if (root && typeof root.requestFullscreen === "function") {
+      let request = root.requestFullscreen();
+      if (request && typeof request.catch === "function") {
+        request.catch(() => {});
+      }
+    }
+  };
+
+  _onExitCinema = () => {
+    this.setState({ cinema: false });
+    let doc: any = document;
+    if (doc.fullscreenElement && typeof doc.exitFullscreen === "function") {
+      let exit = doc.exitFullscreen();
+      if (exit && typeof exit.catch === "function") {
+        exit.catch(() => {});
+      }
+    }
+  };
+
+  _onKeyDown = (e: Object) => {
+    if (this.state.cinema && e.key === "Escape") {
+      this._onExitCinema();
+    }
+  };
+
+  _onFullscreenChange = () => {
+    // Leaving fullscreen (Esc, F11) also leaves Kinomodus.
+    let doc: any = document;
+    if (this.state.cinema && this._root && !doc.fullscreenElement) {
+      this.setState({ cinema: false });
+    }
+  };
+
+  _onChangeCinemaSplit = (e: Object) => {
+    let cinemaSplit = clampSplit(e.target.value);
+    this.setState({ cinemaSplit });
+    try {
+      window.localStorage.setItem(CINEMA_SPLIT_KEY, String(cinemaSplit));
+    } catch (err) {
+      // Not remembered without storage.
+    }
+  };
+
+  _onToggleCinemaChat = () => {
+    this.setState((state) => ({ cinemaChatHidden: !state.cinemaChatHidden }));
+  };
+
+  componentDidUpdate(prevProps: Props, prevState: State) {
+    if (
+      prevState.cinema !== this.state.cinema ||
+      prevState.cinemaSplit !== this.state.cinemaSplit ||
+      prevState.cinemaChatHidden !== this.state.cinemaChatHidden
+    ) {
+      // The board sizes itself on window resize only; its column just
+      // changed without one.
+      window.dispatchEvent(new Event("resize"));
+    }
     let event = this.props.broadcast.event;
     if (
       getOgsAssignment(event) === getOgsAssignment(prevProps.broadcast.event)
@@ -167,6 +266,8 @@ export default class BroadcastCard extends Component<Props, State> {
   };
 
   componentWillUnmount() {
+    document.removeEventListener("keydown", this._onKeyDown);
+    document.removeEventListener("fullscreenchange", this._onFullscreenChange);
     if (this._releaseOgs) {
       this._releaseOgs();
     }
@@ -181,6 +282,9 @@ export default class BroadcastCard extends Component<Props, State> {
     if (this._releaseOgs) {
       this._releaseOgs();
       this._releaseOgs = null;
+    }
+    if (this.state.cinema) {
+      this._onExitCinema();
     }
     this.setState((state) => ({
       streamLoaded: false,
@@ -353,8 +457,52 @@ export default class BroadcastCard extends Component<Props, State> {
       selectedGame &&
       (selectedGame.tvSource === "ogs" || kgsInline)
     );
+    let { cinema, cinemaSplit, cinemaChatHidden } = this.state;
+    cinema = cinema && streamLoaded;
+    let className =
+      "BroadcastCard" +
+      (inline ? " BroadcastCard-open" : "") +
+      (cinema ? " BroadcastCard-cinema" : "") +
+      (cinema && !hasVideo ? " BroadcastCard-cinema-boardonly" : "") +
+      (cinema && games.length <= 1 ? " BroadcastCard-cinema-single" : "") +
+      (cinema && cinemaChatHidden ? " BroadcastCard-cinema-nochat" : "");
     return (
-      <div className={"BroadcastCard" + (inline ? " BroadcastCard-open" : "")}>
+      <div
+        className={className}
+        ref={this._setRootRef}
+        style={
+          cinema && hasVideo
+            ? { gridTemplateColumns: cinemaSplit + "% minmax(0, 1fr)" }
+            : undefined
+        }>
+        {cinema ? (
+          <div className="BroadcastCard-cinema-bar">
+            <div className="BroadcastCard-cinema-title">{event.name}</div>
+            {hasVideo ? (
+              <label className="BroadcastCard-cinema-split">
+                Stream
+                <input
+                  type="range"
+                  min={CINEMA_SPLIT_MIN}
+                  max={CINEMA_SPLIT_MAX}
+                  value={cinemaSplit}
+                  onChange={this._onChangeCinemaSplit}
+                />
+                Brett
+              </label>
+            ) : null}
+            <button
+              className="Button Button-secondary Button-small BroadcastCard-cinema-chat"
+              onClick={this._onToggleCinemaChat}>
+              {cinemaChatHidden ? "Chat einblenden" : "Chat ausblenden"}
+            </button>
+            <button
+              className="Button Button-small BroadcastCard-cinema-exit"
+              onClick={this._onExitCinema}>
+              Kinomodus beenden (Esc)
+            </button>
+          </div>
+        ) : null}
         <CalendarEventCard
           key={streamKey}
           event={event}
@@ -366,11 +514,18 @@ export default class BroadcastCard extends Component<Props, State> {
         />
         <div className="BroadcastCard-boards">
           {streamLoaded ? (
-            <button
-              className="Button BroadcastCard-close"
-              onClick={this._onClose}>
-              Übertragung schließen
-            </button>
+            <div className="BroadcastCard-controls">
+              <button
+                className="Button BroadcastCard-close"
+                onClick={this._onClose}>
+                Übertragung schließen
+              </button>
+              <button
+                className="Button Button-secondary BroadcastCard-cinema-enter"
+                onClick={this._onEnterCinema}>
+                Kinomodus
+              </button>
+            </div>
           ) : !hasVideo && (hasOgs || (kgsInline && games.length)) ? (
             // No stream to load: the boards open with their own button.
             <button

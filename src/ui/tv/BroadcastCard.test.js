@@ -285,6 +285,39 @@ describe("BroadcastCard live status", () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
+  it("fills the window in Kinomodus without reloading the stream", () => {
+    render([], {
+      broadcast: { event: { ...event, ogs_game_id: 7 }, games: [] },
+    });
+    let root = () => container.querySelector(".BroadcastCard");
+    expect(container.querySelector(".BroadcastCard-cinema-enter")).toBe(null);
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    let iframe = container.querySelector("iframe");
+    act(() => container.querySelector(".BroadcastCard-cinema-enter").click());
+    expect(root().className).toContain("BroadcastCard-cinema");
+    expect(container.querySelector("iframe")).toBe(iframe);
+    expect(
+      container.querySelector(".BroadcastCard-cinema-title").textContent
+    ).toBe("Cup");
+    expect(root().style.gridTemplateColumns).toBe("60% minmax(0, 1fr)");
+
+    act(() => container.querySelector(".BroadcastCard-cinema-chat").click());
+    expect(root().className).toContain("BroadcastCard-cinema-nochat");
+    expect(
+      container.querySelector(".BroadcastCard-cinema-chat").textContent
+    ).toBe("Chat einblenden");
+
+    act(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    });
+    expect(root().className).not.toContain("BroadcastCard-cinema");
+    expect(container.querySelector("iframe")).toBe(iframe);
+
+    act(() => container.querySelector(".BroadcastCard-cinema-enter").click());
+    act(() => container.querySelector(".BroadcastCard-cinema-exit").click());
+    expect(root().className).not.toContain("BroadcastCard-cinema");
+  });
+
   it("shows how fresh the OGS board is instead of looking live when it is not", () => {
     let deliver;
     jest

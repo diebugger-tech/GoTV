@@ -197,6 +197,12 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   "Go TV ohne Anmeldung ansehen" im LoginScreen und direkt über `/tv` (einziger Pfad,
   den `App.js` ohne `currentUser` rendert; `/tv/` zählt mit). Streams, Kalender,
   OGS-Bretter und Nachspielen laufen ohne KGS; KGS-Bretter/-Chat bleiben leer.
+- Kinomodus (`BroadcastCard`, Button "Kinomodus" bei geöffneter Übertragung): die Karte
+  füllt das Fenster (`.BroadcastCard-cinema`, zusätzlich Fullscreen-API, wo erlaubt),
+  Stream links, Brett rechts, Verhältnis per Regler (30-80 %, `gotv.cinemaSplit` in
+  localStorage), Chat einklappbar, Esc beendet. Es wechseln nur CSS-Klassen, das
+  Stream-Iframe wird nicht neu geladen. Nach Layoutwechsel wird ein `resize`-Event
+  ausgelöst, weil `BoardContainer` seine Größe nur darauf neu misst.
 - `src/ui/tv/TvSourceBadge.js` — Badge "KGS"/"OGS" an jedem Brett der TV-Brettliste
   (`GameList` mit `showSource`) und im Kopf von `TvGamePanel`. Watch bleibt ohne Badge.
 - `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben
