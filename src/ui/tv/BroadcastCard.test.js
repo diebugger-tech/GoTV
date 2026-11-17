@@ -318,6 +318,113 @@ describe("BroadcastCard live status", () => {
     expect(root().className).not.toContain("BroadcastCard-cinema");
   });
 
+  it("starts with video and keeps the rewound board when video is toggled in cinema", () => {
+    let release = jest.fn();
+    let actions = { onObserveTvGame: jest.fn(() => release) };
+    let tree = parseSgf("(;SZ[9];B[aa];W[bb])");
+    tree.activeNode = tree.currentLine[2];
+    render([{ ...game, tree }], {
+      currentUser: { name: "viewer" },
+      actions,
+    });
+    expect(container.querySelector("iframe")).toBe(null);
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    expect(container.querySelector("iframe")).not.toBe(null);
+    act(() => container.querySelector(".BoardNav-prev").click());
+    let board = container.querySelector(".TvGamePanel");
+    let move = container.querySelector(".BoardNav-move").textContent;
+    act(() => container.querySelector(".BroadcastCard-cinema-enter").click());
+    act(() =>
+      container
+        .querySelector(".BroadcastCard-cinema-bar .BroadcastCard-video-toggle")
+        .click()
+    );
+    expect(container.querySelector("iframe")).toBe(null);
+    expect(container.querySelector(".BroadcastCard-cinema-boardonly")).not.toBe(
+      null
+    );
+    expect(container.querySelector(".TvGamePanel")).toBe(board);
+    expect(container.querySelector(".BoardNav-move").textContent).toBe(move);
+    expect(release).not.toHaveBeenCalled();
+    act(() =>
+      container
+        .querySelector(".BroadcastCard-cinema-bar .BroadcastCard-video-toggle")
+        .click()
+    );
+    expect(container.querySelector("iframe")).not.toBe(null);
+    expect(container.querySelector(".BroadcastCard-cinema-boardonly")).toBe(
+      null
+    );
+    expect(container.querySelector(".TvGamePanel")).toBe(board);
+    expect(container.querySelector(".BoardNav-move").textContent).toBe(move);
+    expect(actions.onObserveTvGame).toHaveBeenCalledTimes(1);
+    act(() => container.querySelector(".BroadcastCard-cinema-exit").click());
+    act(() =>
+      container
+        .querySelector(".BroadcastCard-controls .BroadcastCard-video-toggle")
+        .click()
+    );
+    expect(container.querySelector(".BroadcastCard-boardonly")).not.toBe(null);
+    expect(container.querySelector("iframe")).toBe(null);
+    act(() => container.querySelector(".BroadcastCard-close").click());
+    expect(release).toHaveBeenCalledTimes(1);
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    expect(container.querySelector("iframe")).not.toBe(null);
+  });
+
+  it("opens a recording anonymously without joining KGS and keeps its replay position", async () => {
+    let oldFetch = global.fetch;
+    global.fetch = jest.fn(() =>
+      Promise.resolve({
+        ok: true,
+        text: () =>
+          Promise.resolve(
+            "(;SZ[9]PB[Andrii Kravets]PW[Ali Jabarin]RE[B+R];B[aa];W[bb])"
+          ),
+      })
+    );
+    let actions = { onObserveTvGame: jest.fn() };
+    try {
+      render([], { recordingUrl: "/tv/em-finale-2026.sgf", actions });
+      expect(global.fetch).not.toHaveBeenCalled();
+      expect(container.querySelector("iframe")).toBe(null);
+      await act(async () =>
+        container.querySelector(".StreamEmbed-actions button").click()
+      );
+      expect(container.querySelector("iframe")).not.toBe(null);
+      expect(container.querySelector(".SgfReplay-sources")).toBe(null);
+      expect(container.querySelector(".SgfReplay-result")).toBe(null);
+      expect(container.querySelector(".BoardNav-move").textContent).toBe(
+        "Move 0"
+      );
+      expect(container.textContent).toContain("Andrii Kravets");
+      act(() => container.querySelector(".BoardNav-next").click());
+      let replay = container.querySelector(".SgfReplay");
+      act(() => container.querySelector(".BroadcastCard-cinema-enter").click());
+      act(() =>
+        container
+          .querySelector(
+            ".BroadcastCard-cinema-bar .BroadcastCard-video-toggle"
+          )
+          .click()
+      );
+      expect(container.querySelector(".SgfReplay")).toBe(replay);
+      expect(container.querySelector(".BoardNav-move").textContent).toBe(
+        "Move 1"
+      );
+      expect(container.querySelector("iframe")).toBe(null);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(actions.onObserveTvGame).not.toHaveBeenCalled();
+      expect(container.querySelector(".BroadcastCard-cinema-chat")).toBe(null);
+      expect(container.querySelector(".BroadcastCard-delay")).toBe(null);
+      act(() => container.querySelector(".BroadcastCard-cinema-exit").click());
+      act(() => container.querySelector(".BroadcastCard-close").click());
+      expect(container.querySelector(".SgfReplay")).toBe(null);
+    } finally {
+      global.fetch = oldFetch;
+    }
+  });
+
   it("delays the board, its status and the result to match the video", () => {
     jest.useFakeTimers();
     let nowMs = 100000;

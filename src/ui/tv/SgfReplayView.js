@@ -15,6 +15,7 @@ import type { GameTree } from "../../model";
 type Props = {
   initialUrl?: ?string,
   initialTree?: ?GameTree,
+  compact?: boolean,
 };
 
 type State = {
@@ -86,7 +87,12 @@ export default class SgfReplayView extends Component<Props, State> {
       .then((text) => this._loadSgf(text))
       .catch((err) => {
         console.warn("[tv] Failed to load SGF from " + url + ":", err);
-        this.setState({ status: "error", error: CORS_ERROR_MESSAGE });
+        this.setState({
+          status: "error",
+          error: this.props.compact
+            ? "Finalpartie konnte nicht geladen werden. Schließe das Beispiel und öffne es erneut."
+            : CORS_ERROR_MESSAGE,
+        });
       });
   };
 
@@ -115,30 +121,41 @@ export default class SgfReplayView extends Component<Props, State> {
   render() {
     let { status, error, tree, currentNode, input } = this.state;
     return (
-      <div className="SgfReplay">
-        <div className="SgfReplay-sources">
-          <div className="SgfReplay-source">
-            <div className="SgfReplay-source-label">SGF-Datei:</div>
-            <input
-              ref={this._setFileInput}
-              type="file"
-              accept=".sgf,.SGF,text/plain,application/x-go-sgf"
-              onChange={this._onFileChange}
-            />
+      <div
+        className={
+          "SgfReplay" + (this.props.compact ? " SgfReplay-compact" : "")
+        }>
+        {this.props.compact ? null : (
+          <div className="SgfReplay-sources">
+            <div className="SgfReplay-source">
+              <div className="SgfReplay-source-label">SGF-Datei:</div>
+              <input
+                ref={this._setFileInput}
+                type="file"
+                accept=".sgf,.SGF,text/plain,application/x-go-sgf"
+                onChange={this._onFileChange}
+              />
+            </div>
+            <div className="SgfReplay-source">
+              <div className="SgfReplay-source-label">SGF einfügen:</div>
+              <textarea
+                className="SgfReplay-input"
+                value={input}
+                placeholder="(;GM[1]SZ[19]...)"
+                onChange={this._onInputChange}
+              />
+              <Button
+                small
+                onClick={this._onLoadInput}
+                disabled={!input.trim()}>
+                Laden
+              </Button>
+            </div>
           </div>
-          <div className="SgfReplay-source">
-            <div className="SgfReplay-source-label">SGF einfügen:</div>
-            <textarea
-              className="SgfReplay-input"
-              value={input}
-              placeholder="(;GM[1]SZ[19]...)"
-              onChange={this._onInputChange}
-            />
-            <Button small onClick={this._onLoadInput} disabled={!input.trim()}>
-              Laden
-            </Button>
-          </div>
-        </div>
+        )}
+        {this.props.compact && status === "empty" ? (
+          <div className="TvGamePanel-notice">Finalpartie wird geladen …</div>
+        ) : null}
         {status === "error" ? (
           <div className="SgfReplay-error">{error || "Unbekannter Fehler"}</div>
         ) : null}
@@ -179,7 +196,7 @@ export default class SgfReplayView extends Component<Props, State> {
               {playerNames.black} (B) vs. {playerNames.white} (W)
             </span>
           ) : null}
-          {result ? (
+          {result && (!this.props.compact || moveNum === line.length - 1) ? (
             <span className="SgfReplay-result"> · {result}</span>
           ) : null}
           <span className="SgfReplay-size">
@@ -188,7 +205,11 @@ export default class SgfReplayView extends Component<Props, State> {
           </span>
         </div>
         <div className="SgfReplay-board-container">
-          <BoardContainer game={game} onClickPoint={this._noopClick} />
+          <BoardContainer
+            game={game}
+            embedded={this.props.compact}
+            onClickPoint={this._noopClick}
+          />
         </div>
         <div className="SgfReplay-nav">
           <BoardNav

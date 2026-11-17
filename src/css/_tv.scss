@@ -226,6 +226,38 @@
   }
 }
 
+.BroadcastCard-boardonly:not(.BroadcastCard-cinema) {
+  display: block;
+
+  .TvGamePanel-board-section {
+    max-width: 680px;
+    margin: 0 auto;
+  }
+}
+
+.CinemaExample {
+  margin: 24px auto 0;
+  max-width: 1200px;
+  text-align: left;
+
+  &-heading {
+    padding: 12px 10px 4px;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  &-label,
+  &-source {
+    padding: 4px 10px 12px;
+    font-size: 13px;
+    color: $semi-muted;
+  }
+
+  .SgfReplay-board-container {
+    min-height: 0;
+  }
+}
+
 .TvGamePanel {
   padding: 10px;
   min-width: 0;
@@ -700,6 +732,14 @@ $cinema-bar-height: 44px;
 
     > .CalendarEvent {
       display: none;
+    }
+  }
+
+  .SgfReplay-compact {
+    .SgfReplay-board-container {
+      height: calc(100vh - 190px);
+      min-height: 0;
+      max-height: none;
     }
   }
 

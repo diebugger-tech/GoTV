@@ -203,6 +203,16 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   localStorage), Chat einklappbar, Esc beendet. Es wechseln nur CSS-Klassen, das
   Stream-Iframe wird nicht neu geladen. Nach Layoutwechsel wird ein `resize`-Event
   ausgelöst, weil `BoardContainer` seine Größe nur darauf neu misst.
+- Video-Umschaltung (`BroadcastCard`): Übertragungen öffnen nach Klick mit Video;
+  "Nur Brett" entfernt den Player samt Ton, "Video zuschalten" lädt ihn wieder.
+  Brettposition und Verbindung bleiben erhalten. Gilt auch im Kinomodus.
+- Beispiel bei leerem Live-Bereich (`CinemaExample`): EGF-Twitch-Kanal (aktuelles
+  Programm/Offlinebild) und lokal gebündelte Finalpartie der EM 2026, Kravets–Jabarin,
+  unabhängig voneinander. Kein erfundenes Live-Event, kein KGS-/OGS-Join. Echte
+  Übertragungen verdrängen das Beispiel. `SgfReplayView compact` zeigt Brett und
+  Navigation ohne Datei-Eingabe; Ergebnis erst beim letzten Zug.
+  Quelle von `public/tv/em-finale-2026.sgf` (unverändert übernommen am 17.11.2026):
+  https://eurogofed.org/archives/sgf/egc/2026/ec/8-AndriiKravets-AliJabarin.sgf
 - Brett-Verzögerung (`src/model/DelayBuffer.js`, Regler in `BroadcastCard`, 0-120 s,
   `gotv.boardDelay` in localStorage): die Karte zeigt jedes Brett so, wie es vor N
   Sekunden war. Verzögert wird der ganze Partie-Schnappschuss, also Züge, Ergebnis,

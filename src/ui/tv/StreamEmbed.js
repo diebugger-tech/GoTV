@@ -15,6 +15,7 @@ type Props = {
   channel?: TvChannel,
   url?: string,
   onLoad?: () => any,
+  loaded?: boolean,
 };
 
 type State = {
@@ -99,7 +100,9 @@ export default class StreamEmbed extends Component<Props, State> {
       );
     }
 
-    if (!this.state.loaded) {
+    if (
+      !(this.props.loaded === undefined ? this.state.loaded : this.props.loaded)
+    ) {
       return (
         <div className="StreamEmbed StreamEmbed-placeholder">
           <div className="StreamEmbed-placeholder-text">

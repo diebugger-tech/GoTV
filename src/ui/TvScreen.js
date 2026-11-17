@@ -2,6 +2,7 @@
 import React, { PureComponent as Component } from "react";
 import CalendarView from "./tv/CalendarView";
 import BroadcastCard from "./tv/BroadcastCard";
+import CinemaExample from "./tv/CinemaExample";
 import CalendarEventCard, {
   formatEventDateRange,
 } from "./tv/CalendarEventCard";
@@ -212,6 +213,7 @@ export default class TvScreen extends Component<Props, State> {
                     Zum Kalender
                   </A>
                 </div>
+                <CinemaExample />
               </div>
             )}
           </div>

@@ -5,6 +5,47 @@ import TvScreen from "./TvScreen";
 import { _resetTvEventsCache } from "../model/tv";
 
 describe("TV live time windows", () => {
+  it("offers the cinema example only while there is no real live broadcast", () => {
+    let scroll = jest.spyOn(window, "scrollTo").mockImplementation(() => {});
+    let container = document.createElement("div");
+    document.body.appendChild(container);
+    let props = {
+      activeGames: [],
+      gamesById: {},
+      roomsById: {},
+      actions: {},
+      tvStreamUrl: null,
+      tvReplayGameId: null,
+    };
+    let event = {
+      id: "real-live",
+      name: "Real broadcast",
+      date_start: new Date(Date.now() - 86400000).toISOString().slice(0, 10),
+      date_end: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+      platform: "twitch",
+      stream_url: "https://www.twitch.tv/somechannel",
+    };
+    try {
+      act(() => {
+        ReactDOM.render(<TvScreen {...props} events={[]} />, container);
+      });
+      expect(container.querySelector(".CinemaExample")).not.toBe(null);
+      expect(container.textContent).toContain("EM-Finale 2026");
+      expect(container.querySelector("iframe")).toBe(null);
+      act(() => {
+        ReactDOM.unmountComponentAtNode(container);
+      });
+      act(() => {
+        ReactDOM.render(<TvScreen {...props} events={[event]} />, container);
+      });
+      expect(container.querySelector(".CinemaExample")).toBe(null);
+      expect(container.textContent).toContain("Real broadcast");
+    } finally {
+      ReactDOM.unmountComponentAtNode(container);
+      container.remove();
+      scroll.mockRestore();
+    }
+  });
   it("opens a confirmed KGS board with its stream in both Live and Kalender", () => {
     let scroll = jest.spyOn(window, "scrollTo").mockImplementation(() => {});
     let container = document.createElement("div");
@@ -115,13 +156,19 @@ describe("TV live time windows", () => {
           container
         );
       });
-      expect(container.querySelector(".BroadcastCard")).toBe(null);
+      expect(
+        container.querySelector(".TvScreen-live-content > .BroadcastCard")
+      ).toBe(null);
       now += 60000;
       await act(async () => jest.advanceTimersByTime(60000));
-      expect(container.querySelector(".BroadcastCard")).not.toBe(null);
+      expect(
+        container.querySelector(".TvScreen-live-content > .BroadcastCard")
+      ).not.toBe(null);
       now += 17 * 60000;
       await act(async () => jest.advanceTimersByTime(60000));
-      expect(container.querySelector(".BroadcastCard")).toBe(null);
+      expect(
+        container.querySelector(".TvScreen-live-content > .BroadcastCard")
+      ).toBe(null);
       expect(global.fetch).toHaveBeenCalledTimes(1);
     } finally {
       ReactDOM.unmountComponentAtNode(container);

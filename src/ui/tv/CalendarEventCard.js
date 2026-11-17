@@ -17,6 +17,8 @@ type Props = {
   boardCount?: number,
   ogsBoardCount?: number,
   now?: number,
+  showVideo?: boolean,
+  videoLoaded?: boolean,
 };
 
 function getBoardStatus(
@@ -130,7 +132,13 @@ export default class CalendarEventCard extends Component<Props> {
             )}
           </div>
         ) : null}
-        <StreamEmbed event={event} onLoad={this.props.onStreamLoad} />
+        {this.props.showVideo === false ? null : (
+          <StreamEmbed
+            event={event}
+            onLoad={this.props.onStreamLoad}
+            loaded={this.props.videoLoaded}
+          />
+        )}
         {event.sgf_url && onOpenReplay ? (
           <div className="CalendarEvent-replay">
             <button

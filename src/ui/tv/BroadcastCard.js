@@ -3,6 +3,7 @@ import React, { PureComponent as Component } from "react";
 import GameList from "../game/GameList";
 import CalendarEventCard from "./CalendarEventCard";
 import TvGamePanel from "./TvGamePanel";
+import SgfReplayView from "./SgfReplayView";
 import { ogsTvSource } from "../../model/OgsTvSource";
 import { hasOgsBoard, hasVideoStream } from "../../model/tv";
 import { parseOgsGameLink } from "../../model/OgsLinks";
@@ -23,10 +24,13 @@ type Props = {
   // "OGS-Partielink zuordnen": gameId null removes the viewer's own link.
   onAssignOgsLink?: (eventId: string, gameId: ?number) => any,
   hasManualOgsLink?: boolean,
+  // An archived board that needs no KGS/OGS session.
+  recordingUrl?: string,
 };
 
 type State = {
   streamLoaded: boolean,
+  videoVisible: boolean,
   streamKey: number,
   selectedGameKey: ?string,
   ogsGames: Array<GameChannel>,
@@ -139,6 +143,7 @@ export default class BroadcastCard extends Component<Props, State> {
   _delayBuffers: { [gameKey: string]: DelayBuffer<GameChannel> } = {};
   state = {
     streamLoaded: false,
+    videoVisible: true,
     streamKey: 0,
     selectedGameKey: null,
     ogsGames: [],
@@ -223,7 +228,10 @@ export default class BroadcastCard extends Component<Props, State> {
 
   // The timer only runs while boards are open and delayed.
   _syncDelayTimer() {
-    let needed = this.state.streamLoaded && this.state.delaySeconds > 0;
+    let needed =
+      !this.props.recordingUrl &&
+      this.state.streamLoaded &&
+      this.state.delaySeconds > 0;
     if (needed && !this._delayTimer) {
       this._delayTimer = setInterval(
         () => this.setState((state) => ({ delayTick: state.delayTick + 1 })),
@@ -281,11 +289,27 @@ export default class BroadcastCard extends Component<Props, State> {
     this.setState((state) => ({ cinemaChatHidden: !state.cinemaChatHidden }));
   };
 
+  _onToggleVideo = () => {
+    this.setState((state) => ({ videoVisible: !state.videoVisible }));
+  };
+
+  _renderVideoToggle() {
+    return (
+      <button
+        type="button"
+        className="Button Button-secondary Button-small BroadcastCard-video-toggle"
+        onClick={this._onToggleVideo}>
+        {this.state.videoVisible ? "Nur Brett" : "Video zuschalten"}
+      </button>
+    );
+  }
+
   componentDidUpdate(prevProps: Props, prevState: State) {
     if (
       prevState.cinema !== this.state.cinema ||
       prevState.cinemaSplit !== this.state.cinemaSplit ||
-      prevState.cinemaChatHidden !== this.state.cinemaChatHidden
+      prevState.cinemaChatHidden !== this.state.cinemaChatHidden ||
+      prevState.videoVisible !== this.state.videoVisible
     ) {
       // The board sizes itself on window resize only; its column just
       // changed without one.
@@ -370,7 +394,7 @@ export default class BroadcastCard extends Component<Props, State> {
   }
 
   _onStreamLoad = () => {
-    this.setState({ streamLoaded: true });
+    this.setState({ streamLoaded: true, videoVisible: true });
     this._observeOgs();
   };
 
@@ -520,6 +544,7 @@ export default class BroadcastCard extends Component<Props, State> {
       selectedGameKey,
       ogsGames,
       ogsError,
+      videoVisible,
     } = this.state;
     let games = this._getDelayedGames([...kgsGames, ...ogsGames]);
     let hasOgs = hasOgsBoard(event);
@@ -528,10 +553,14 @@ export default class BroadcastCard extends Component<Props, State> {
       games.find((game) => !game.over) ||
       games[0];
     let hasVideo = hasVideoStream(event);
+    let showVideo = hasVideo && videoVisible;
     let kgsInline = !!(currentUser && actions);
-    let inline = !!(streamLoaded && (hasOgs || kgsInline));
+    let recordingUrl = this.props.recordingUrl;
+    let inline = !!(streamLoaded && (recordingUrl || hasOgs || kgsInline));
     let boardTitle;
-    if (kgsGames.length && (hasOgs || ogsGames.length)) {
+    if (recordingUrl) {
+      boardTitle = "Finalpartie zum Nachspielen · Aufzeichnung";
+    } else if (kgsGames.length && (hasOgs || ogsGames.length)) {
       boardTitle = "Bretter der Übertragung (KGS + OGS)";
     } else if (games.length) {
       let source = ogsGames.length ? "OGS" : "KGS";
@@ -561,8 +590,9 @@ export default class BroadcastCard extends Component<Props, State> {
     let className =
       "BroadcastCard" +
       (inline ? " BroadcastCard-open" : "") +
+      (streamLoaded && !showVideo ? " BroadcastCard-boardonly" : "") +
       (cinema ? " BroadcastCard-cinema" : "") +
-      (cinema && !hasVideo ? " BroadcastCard-cinema-boardonly" : "") +
+      (cinema && !showVideo ? " BroadcastCard-cinema-boardonly" : "") +
       (cinema && games.length <= 1 ? " BroadcastCard-cinema-single" : "") +
       (cinema && cinemaChatHidden ? " BroadcastCard-cinema-nochat" : "");
     return (
@@ -570,14 +600,14 @@ export default class BroadcastCard extends Component<Props, State> {
         className={className}
         ref={this._setRootRef}
         style={
-          cinema && hasVideo
+          cinema && showVideo
             ? { gridTemplateColumns: cinemaSplit + "% minmax(0, 1fr)" }
             : undefined
         }>
         {cinema ? (
           <div className="BroadcastCard-cinema-bar">
             <div className="BroadcastCard-cinema-title">{event.name}</div>
-            {hasVideo ? (
+            {showVideo ? (
               <label className="BroadcastCard-cinema-split">
                 Stream
                 <input
@@ -590,12 +620,17 @@ export default class BroadcastCard extends Component<Props, State> {
                 Brett
               </label>
             ) : null}
-            {this._renderDelayControl()}
-            <button
-              className="Button Button-secondary Button-small BroadcastCard-cinema-chat"
-              onClick={this._onToggleCinemaChat}>
-              {cinemaChatHidden ? "Chat einblenden" : "Chat ausblenden"}
-            </button>
+            {hasVideo && (games.length || recordingUrl)
+              ? this._renderVideoToggle()
+              : null}
+            {recordingUrl ? null : this._renderDelayControl()}
+            {recordingUrl ? null : (
+              <button
+                className="Button Button-secondary Button-small BroadcastCard-cinema-chat"
+                onClick={this._onToggleCinemaChat}>
+                {cinemaChatHidden ? "Chat einblenden" : "Chat ausblenden"}
+              </button>
+            )}
             <button
               className="Button Button-small BroadcastCard-cinema-exit"
               onClick={this._onExitCinema}>
@@ -611,6 +646,8 @@ export default class BroadcastCard extends Component<Props, State> {
           boardCount={kgsGames.length}
           ogsBoardCount={ogsGames.length}
           now={this.props.now}
+          showVideo={!streamLoaded || videoVisible}
+          videoLoaded={streamLoaded}
         />
         <div className="BroadcastCard-boards">
           {streamLoaded ? (
@@ -625,7 +662,10 @@ export default class BroadcastCard extends Component<Props, State> {
                 onClick={this._onEnterCinema}>
                 Kinomodus
               </button>
-              {this._renderDelayControl()}
+              {hasVideo && (games.length || recordingUrl)
+                ? this._renderVideoToggle()
+                : null}
+              {recordingUrl ? null : this._renderDelayControl()}
             </div>
           ) : !hasVideo && (hasOgs || (kgsInline && games.length)) ? (
             // No stream to load: the boards open with their own button.
@@ -666,6 +706,9 @@ export default class BroadcastCard extends Component<Props, State> {
               actions={actions}
               connectionKey={connectionKey}
             />
+          ) : null}
+          {streamLoaded && recordingUrl ? (
+            <SgfReplayView initialUrl={recordingUrl} compact />
           ) : null}
         </div>
       </div>
