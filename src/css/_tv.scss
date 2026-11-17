@@ -246,6 +246,25 @@
     }
   }
 
+  &-board-nav {
+    position: relative;
+    height: 36px;
+    margin-top: 4px;
+    background: $inverted-bg-off;
+
+    .BoardNav {
+      padding-left: 144px;
+    }
+
+    a.BoardNav-first,
+    a.BoardNav-last,
+    a.BoardNav-prev,
+    a.BoardNav-next {
+      padding-right: 10px;
+      padding-left: 10px;
+    }
+  }
+
   &-chat-title {
     font-weight: bold;
     margin-top: 12px;

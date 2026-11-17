@@ -1,6 +1,7 @@
 // @flow
 import React, { PureComponent as Component } from "react";
 import BoardContainer from "../board/BoardContainer";
+import BoardNav from "../board/BoardNav";
 import GameChat from "../game/GameChat";
 import GamePlayersList from "../game/GamePlayersList";
 import { getGameChatSections, getGameLine } from "../../model/game";
@@ -14,10 +15,15 @@ type Props = {
   connectionKey?: string,
 };
 
-// Always follows activeNode locally, even if the same game is rewound in Watch.
-export default class TvGamePanel extends Component<Props> {
+type State = {
+  // null follows the newest move; a number keeps a locally rewound position.
+  currentNode: ?number,
+};
+
+export default class TvGamePanel extends Component<Props, State> {
   _release: ?() => void;
   _chat: ?HTMLElement;
+  state = { currentNode: null };
 
   componentDidMount() {
     this._subscribe();
@@ -64,29 +70,51 @@ export default class TvGamePanel extends Component<Props> {
     this._chat = ref;
   };
 
+  _onChangeCurrentNode = (nodeId: number) => {
+    let tree = this.props.game.tree;
+    this.setState({
+      currentNode: tree && nodeId === tree.activeNode ? null : nodeId,
+    });
+  };
+
   render() {
     let { game, currentUser, usersByName, actions } = this.props;
     let tree = game.tree;
     let source = game.tvSource === "ogs" ? "OGS" : "KGS";
-    let liveGame = tree
-      ? {
-          ...game,
-          tree: {
-            ...tree,
-            currentNode: tree.activeNode,
-            currentLine: getGameLine(tree, tree.activeNode),
-          },
-        }
-      : game;
+    let currentNode = tree ? tree.activeNode : null;
+    let selectedNode = this.state.currentNode;
+    if (tree && typeof selectedNode === "number" && tree.nodes[selectedNode]) {
+      currentNode = selectedNode;
+    }
+    let currentLine =
+      tree && typeof currentNode === "number"
+        ? getGameLine(tree, currentNode)
+        : null;
+    let liveGame =
+      tree && typeof currentNode === "number" && currentLine
+        ? {
+            ...game,
+            tree: { ...tree, currentNode, currentLine },
+          }
+        : game;
     let sections = getGameChatSections(game);
     return (
       <div className="TvGamePanel">
         <GamePlayersList players={game.players} />
         {game.accessDenied ? (
           <div className="TvGamePanel-notice">{game.accessDenied}</div>
-        ) : tree ? (
-          <div className="TvGamePanel-board">
-            <BoardContainer game={liveGame} embedded />
+        ) : tree && typeof currentNode === "number" && currentLine ? (
+          <div className="TvGamePanel-board-section">
+            <div className="TvGamePanel-board">
+              <BoardContainer game={liveGame} embedded />
+            </div>
+            <div className="TvGamePanel-board-nav">
+              <BoardNav
+                nodeId={currentNode}
+                currentLine={currentLine}
+                onChangeCurrentNode={this._onChangeCurrentNode}
+              />
+            </div>
           </div>
         ) : (
           <div className="TvGamePanel-notice">

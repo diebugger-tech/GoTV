@@ -89,6 +89,11 @@ describe("BroadcastCard live status", () => {
     expect(container.textContent).toContain("Eine spannende Partie!");
     expect(actions.onObserveTvGame).toHaveBeenCalledWith(42);
     expect(onJoinGame).not.toHaveBeenCalled();
+    act(() => container.querySelector(".BoardNav-prev").click());
+    expect(container.querySelector(".BoardNav-move").textContent).toBe(
+      "Move 0"
+    );
+    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(0);
     let nextTree = { ...tree, activeNode: tree.currentLine[2] };
     nextTree.messages = {
       ...tree.messages,
@@ -98,6 +103,18 @@ describe("BroadcastCard live status", () => {
     };
     render([{ ...game, tree: nextTree, moveNum: 2 }], props);
     expect(container.textContent).toContain("Der nächste Zug!");
+    expect(container.querySelector(".BoardNav-move").textContent).toBe(
+      "Move 0"
+    );
+    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(0);
+    expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(0);
+    act(() => container.querySelector(".BoardNav-next").click());
+    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(1);
+    expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(0);
+    act(() => container.querySelector(".BoardNav-last").click());
+    expect(container.querySelector(".BoardNav-move").textContent).toBe(
+      "Move 2"
+    );
     expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(1);
     expect(actions.onObserveTvGame).toHaveBeenCalledTimes(1);
     act(() => container.querySelector(".BroadcastCard-close").click());
