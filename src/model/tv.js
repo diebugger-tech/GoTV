@@ -341,7 +341,8 @@ export function validateTvChannel(value: Object): ?TvChannel {
 // the browser - no proxy needed.
 export const REMOTE_EVENTS_URL =
   "https://raw.githubusercontent.com/diebugger-tech/shinkgs/master/public/tv/events.json";
-const LOCAL_EVENTS_URL = "tv/events.json";
+// Absolute, so it also resolves when the page itself is at /tv/.
+const LOCAL_EVENTS_URL = "/tv/events.json";
 const EVENTS_CACHE_MS = 60 * 60 * 1000; // 1 hour
 
 type TvData = { events: Array<TvEvent>, channels: Array<TvChannel> };

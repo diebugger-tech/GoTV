@@ -17,6 +17,8 @@ type Props = {
   clientState: KgsClientState,
   preferences: Preferences,
   actions: AppActions,
+  // Opens Go TV without a KGS login (streams, calendar, OGS boards, replay).
+  onWatchTv?: () => any,
 };
 
 type State = {
@@ -154,6 +156,16 @@ export default class LoginScreen extends Component<Props, State> {
               Forgot password
             </a>
           </div>
+          {this.props.onWatchTv ? (
+            <div className="LoginScreen-guest-tv">
+              <Button type="button" onClick={this.props.onWatchTv}>
+                Go TV ohne Anmeldung ansehen
+              </Button>
+              <div className="LoginScreen-guest-tv-note">
+                Übertragungen, Kalender, OGS-Bretter und Nachspielen
+              </div>
+            </div>
+          ) : null}
         </div>
         <div className="LoginScreen-kgs-clients">
           For a complete user experience download the KGS client desktop

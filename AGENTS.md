@@ -193,6 +193,10 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   (Echtzeit, `game.tvLive`), "wird alle paar Sekunden abgefragt" (REST-Rückfall),
   "Verbindung zu OGS unterbrochen – letzter Stand von HH:MM:SS" (Fehler bei stehendem
   Brett), "Partie beendet – eine weitere Partie … erscheint automatisch".
+- Zuschauen ohne KGS-Login: `src/ui/tv/GuestTvScreen.js`, erreichbar über den Button
+  "Go TV ohne Anmeldung ansehen" im LoginScreen und direkt über `/tv` (einziger Pfad,
+  den `App.js` ohne `currentUser` rendert; `/tv/` zählt mit). Streams, Kalender,
+  OGS-Bretter und Nachspielen laufen ohne KGS; KGS-Bretter/-Chat bleiben leer.
 - `src/ui/tv/TvSourceBadge.js` — Badge "KGS"/"OGS" an jedem Brett der TV-Brettliste
   (`GameList` mit `showSource`) und im Kopf von `TvGamePanel`. Watch bleibt ohne Badge.
 - `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben

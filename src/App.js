@@ -2,6 +2,7 @@
 import React, { Component } from "react";
 import { createBrowserHistory } from "history";
 import LoginScreen from "./ui/LoginScreen";
+import GuestTvScreen from "./ui/tv/GuestTvScreen";
 import {
   getInitialState,
   handleMessage,
@@ -16,7 +17,17 @@ type Props = {};
 
 type State = {
   appState: AppState,
+  // Logged out, but watching Go TV as a guest.
+  guestTv: boolean,
 };
+
+// The only path that renders without a KGS login.
+const GUEST_TV_PATH = "tv";
+
+// "/tv" and "/tv/" (servers add the slash because public/tv/ is a folder).
+function isGuestTvPath(pathname: string): boolean {
+  return pathname.replace(/^\/+|\/+$/g, "") === GUEST_TV_PATH;
+}
 
 class App extends Component<Props, State> {
   static defaultProps: any;
@@ -41,7 +52,7 @@ class App extends Component<Props, State> {
     );
     this._actions = new AppActions(this._store, this._client, this._history);
 
-    this.state = { appState: this._store.getState() };
+    this.state = { appState: this._store.getState(), guestTv: false };
 
     if (process.env.NODE_ENV === "development") {
       window.App = this;
@@ -76,6 +87,10 @@ class App extends Component<Props, State> {
 
   _onHistoryChange = (loc: Object, action: string) => {
     let path: NavOption = loc.location.pathname.substring(1);
+    if (!this._store.getState().currentUser) {
+      // Back/forward while logged out: /tv is the guest TV, else the login.
+      this.setState({ guestTv: isGuestTvPath(loc.location.pathname) });
+    }
     if (action === "POP") {
       this._actions.onChangeNav(path, { push: false });
     }
@@ -107,7 +122,12 @@ class App extends Component<Props, State> {
   _syncNav = () => {
     let state = this._store.getState();
     if (!state.currentUser) {
-      this._history.replace("/");
+      // /tv works without a login (guest TV); everything else needs one.
+      if (isGuestTvPath(this._history.location.pathname)) {
+        this.setState({ guestTv: true });
+      } else {
+        this._history.replace("/");
+      }
     } else {
       let path = this._history.location.pathname.slice(1);
       if (!isValidNav(path)) {
@@ -116,6 +136,14 @@ class App extends Component<Props, State> {
         this._actions.onChangeNav(path, { push: false });
       }
     }
+  };
+
+  _onWatchTv = () => {
+    this._history.push("/" + GUEST_TV_PATH);
+  };
+
+  _onExitGuestTv = () => {
+    this._history.push("/");
   };
 
   _loadMainComponent = () => {
@@ -133,7 +161,19 @@ class App extends Component<Props, State> {
     }
 
     if (!appState.currentUser) {
-      return <LoginScreen {...appState} actions={this._actions} />;
+      return this.state.guestTv ? (
+        <GuestTvScreen
+          appState={appState}
+          actions={this._actions}
+          onExit={this._onExitGuestTv}
+        />
+      ) : (
+        <LoginScreen
+          {...appState}
+          actions={this._actions}
+          onWatchTv={this._onWatchTv}
+        />
+      );
     }
 
     let Main = this._mainComponent;

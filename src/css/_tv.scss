@@ -595,3 +595,25 @@
     }
   }
 }
+
+// Go TV without a KGS login.
+.GuestTv-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  background: $inverted-bg;
+  color: $inverted-fg;
+  font-size: 13px;
+}
+
+.LoginScreen-guest-tv {
+  margin-top: 24px;
+
+  &-note {
+    margin-top: 6px;
+    font-size: 13px;
+    color: $semi-muted;
+  }
+}

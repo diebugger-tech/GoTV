@@ -1080,7 +1080,7 @@ describe("fetchTvEvents", () => {
     let clock = jest.spyOn(Date, "now").mockReturnValue(0);
     global.fetch = jest.fn(() => okResponse({ events: [] }));
     await fetchTvEvents();
-    expect(global.fetch.mock.calls[0][0]).toBe("tv/events.json");
+    expect(global.fetch.mock.calls[0][0]).toBe("/tv/events.json");
     clock.mockReturnValue(5 * 60 * 1000);
     await fetchTvEvents();
     expect(global.fetch).toHaveBeenCalledTimes(2);
