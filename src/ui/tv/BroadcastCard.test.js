@@ -318,6 +318,68 @@ describe("BroadcastCard live status", () => {
     expect(root().className).not.toContain("BroadcastCard-cinema");
   });
 
+  it("delays the board, its status and the result to match the video", () => {
+    jest.useFakeTimers();
+    let nowMs = 100000;
+    jest.spyOn(Date, "now").mockImplementation(() => nowMs);
+    let deliver;
+    jest
+      .spyOn(ogsTvSource, "observeEvent")
+      .mockImplementation((e, listener) => {
+        deliver = listener;
+        return jest.fn();
+      });
+    let tree = parseSgf("(;SZ[9];B[aa])");
+    tree.activeNode = tree.currentLine[1];
+    let ogsGame = { ...game, id: 7, tvSource: "ogs", tree, tvLive: true };
+    render([], {
+      broadcast: { event: { ...event, ogs_game_id: 7 }, games: [] },
+    });
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    let slider = container.querySelector(".BroadcastCard-delay input");
+    act(() => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value"
+      ).set.call(slider, "10");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(
+      container.querySelector(".BroadcastCard-delay-value").textContent
+    ).toBe("10 s");
+    let boardStatus = () =>
+      container.querySelector(".BroadcastCard-boards-status").textContent;
+
+    act(() => deliver({ ...ogsGame, moveNum: 1 }, null));
+    expect(boardStatus()).toBe("Partie läuft · Zug 1");
+    expect(
+      container.querySelector(".BroadcastCard-ogs-status").textContent
+    ).toBe("Live verbunden – Anzeige um 10 s verzögert");
+
+    nowMs += 2000;
+    act(() => deliver({ ...ogsGame, moveNum: 2, over: true }, null));
+    expect(boardStatus()).toBe("Partie läuft · Zug 1");
+
+    nowMs += 9000;
+    act(() => jest.advanceTimersByTime(500));
+    expect(boardStatus()).toBe("Partie läuft · Zug 1");
+
+    nowMs += 1500;
+    act(() => jest.advanceTimersByTime(500));
+    expect(boardStatus()).toBe("Partie beendet · Zug 2");
+
+    act(() => {
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value"
+      ).set.call(slider, "0");
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    act(() => deliver({ ...ogsGame, moveNum: 3 }, null));
+    expect(boardStatus()).toBe("Partie läuft · Zug 3");
+    jest.useRealTimers();
+  });
+
   it("shows how fresh the OGS board is instead of looking live when it is not", () => {
     let deliver;
     jest

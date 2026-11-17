@@ -6,6 +6,7 @@ import TvGamePanel from "./TvGamePanel";
 import { ogsTvSource } from "../../model/OgsTvSource";
 import { hasOgsBoard, hasVideoStream } from "../../model/tv";
 import { parseOgsGameLink } from "../../model/OgsLinks";
+import { DelayBuffer } from "../../model/DelayBuffer";
 import type { TvBroadcast } from "../../model/tv";
 import type { GameChannel, Room, User, AppActions, Index } from "../../model";
 
@@ -39,7 +40,28 @@ type State = {
   cinema: boolean,
   cinemaSplit: number,
   cinemaChatHidden: boolean,
+  // Seconds the boards lag behind the game server, to match the video.
+  delaySeconds: number,
+  // Bumped by the delay timer so delayed boards catch up without new data.
+  delayTick: number,
 };
+
+const DELAY_KEY = "gotv.boardDelay";
+const DELAY_MAX_SECONDS = 120;
+const DELAY_TICK_MS = 500;
+
+function clampDelay(value: mixed): number {
+  let delay = Math.round(Number(value));
+  return delay > 0 && delay <= DELAY_MAX_SECONDS ? delay : 0;
+}
+
+function loadDelay(): number {
+  try {
+    return clampDelay(window.localStorage.getItem(DELAY_KEY));
+  } catch (err) {
+    return 0; // storage disabled
+  }
+}
 
 const CINEMA_SPLIT_KEY = "gotv.cinemaSplit";
 // Share of the width the stream gets in Kinomodus, in percent.
@@ -113,6 +135,8 @@ function getBroadcastStatus(games: Array<GameChannel>): string {
 export default class BroadcastCard extends Component<Props, State> {
   _releaseOgs: ?() => void;
   _root: ?HTMLElement;
+  _delayTimer: ?IntervalID;
+  _delayBuffers: { [gameKey: string]: DelayBuffer<GameChannel> } = {};
   state = {
     streamLoaded: false,
     streamKey: 0,
@@ -126,6 +150,8 @@ export default class BroadcastCard extends Component<Props, State> {
     cinema: false,
     cinemaSplit: loadCinemaSplit(),
     cinemaChatHidden: false,
+    delaySeconds: loadDelay(),
+    delayTick: 0,
   };
 
   componentDidMount() {
@@ -185,6 +211,72 @@ export default class BroadcastCard extends Component<Props, State> {
     }
   };
 
+  _onChangeDelay = (e: Object) => {
+    let delaySeconds = clampDelay(e.target.value);
+    this.setState({ delaySeconds });
+    try {
+      window.localStorage.setItem(DELAY_KEY, String(delaySeconds));
+    } catch (err) {
+      // Not remembered without storage.
+    }
+  };
+
+  // The timer only runs while boards are open and delayed.
+  _syncDelayTimer() {
+    let needed = this.state.streamLoaded && this.state.delaySeconds > 0;
+    if (needed && !this._delayTimer) {
+      this._delayTimer = setInterval(
+        () => this.setState((state) => ({ delayTick: state.delayTick + 1 })),
+        DELAY_TICK_MS
+      );
+    } else if (!needed && this._delayTimer) {
+      clearInterval(this._delayTimer);
+      this._delayTimer = null;
+      this._delayBuffers = {};
+    }
+  }
+
+  // Each board as it was delaySeconds ago - the whole snapshot, so moves,
+  // result, clocks and chat lag together and nothing spoils the video.
+  _getDelayedGames(games: Array<GameChannel>): Array<GameChannel> {
+    let delayMs = this.state.delaySeconds * 1000;
+    if (!delayMs) {
+      return games;
+    }
+    let now = Date.now();
+    let buffers = {};
+    let delayed = games.map((game) => {
+      let key = getGameKey(game);
+      let buffer = this._delayBuffers[key] || new DelayBuffer();
+      buffers[key] = buffer;
+      if (buffer.latest() !== game) {
+        buffer.push(game, now);
+      }
+      return buffer.get(now, delayMs) || game;
+    });
+    this._delayBuffers = buffers; // boards that are gone drop their history
+    return delayed;
+  }
+
+  _renderDelayControl() {
+    let { delaySeconds } = this.state;
+    return (
+      <label className="BroadcastCard-delay">
+        Brett-Verzögerung
+        <input
+          type="range"
+          min={0}
+          max={DELAY_MAX_SECONDS}
+          value={delaySeconds}
+          onChange={this._onChangeDelay}
+        />
+        <span className="BroadcastCard-delay-value">
+          {delaySeconds ? delaySeconds + " s" : "aus"}
+        </span>
+      </label>
+    );
+  }
+
   _onToggleCinemaChat = () => {
     this.setState((state) => ({ cinemaChatHidden: !state.cinemaChatHidden }));
   };
@@ -199,6 +291,7 @@ export default class BroadcastCard extends Component<Props, State> {
       // changed without one.
       window.dispatchEvent(new Event("resize"));
     }
+    this._syncDelayTimer();
     let event = this.props.broadcast.event;
     if (
       getOgsAssignment(event) === getOgsAssignment(prevProps.broadcast.event)
@@ -268,6 +361,9 @@ export default class BroadcastCard extends Component<Props, State> {
   componentWillUnmount() {
     document.removeEventListener("keydown", this._onKeyDown);
     document.removeEventListener("fullscreenchange", this._onFullscreenChange);
+    if (this._delayTimer) {
+      clearInterval(this._delayTimer);
+    }
     if (this._releaseOgs) {
       this._releaseOgs();
     }
@@ -318,9 +414,10 @@ export default class BroadcastCard extends Component<Props, State> {
 
   // Says honestly how fresh the OGS board is, so a stalled board never looks
   // like a running broadcast.
-  _renderOgsStatus() {
-    let { ogsGames, ogsError, ogsUpdatedAt } = this.state;
-    let game = ogsGames[0];
+  // games: the boards as displayed (delayed), so the status spoils nothing.
+  _renderOgsStatus(games: Array<GameChannel>) {
+    let { ogsError, ogsUpdatedAt, delaySeconds } = this.state;
+    let game = games.find((candidate) => candidate.tvSource === "ogs");
     if (!game) {
       return null;
     }
@@ -343,7 +440,9 @@ export default class BroadcastCard extends Component<Props, State> {
         "Partie beendet – eine weitere Partie derselben Spieler erscheint automatisch";
     } else if (game.tvLive) {
       kind = "live";
-      text = "Live verbunden – Züge erscheinen sofort";
+      text = delaySeconds
+        ? "Live verbunden – Anzeige um " + delaySeconds + " s verzögert"
+        : "Live verbunden – Züge erscheinen sofort";
     } else {
       kind = "polling";
       text = "Brett wird alle paar Sekunden abgefragt";
@@ -422,7 +521,7 @@ export default class BroadcastCard extends Component<Props, State> {
       ogsGames,
       ogsError,
     } = this.state;
-    let games = [...kgsGames, ...ogsGames];
+    let games = this._getDelayedGames([...kgsGames, ...ogsGames]);
     let hasOgs = hasOgsBoard(event);
     let selectedGame =
       games.find((game) => getGameKey(game) === selectedGameKey) ||
@@ -491,6 +590,7 @@ export default class BroadcastCard extends Component<Props, State> {
                 Brett
               </label>
             ) : null}
+            {this._renderDelayControl()}
             <button
               className="Button Button-secondary Button-small BroadcastCard-cinema-chat"
               onClick={this._onToggleCinemaChat}>
@@ -525,6 +625,7 @@ export default class BroadcastCard extends Component<Props, State> {
                 onClick={this._onEnterCinema}>
                 Kinomodus
               </button>
+              {this._renderDelayControl()}
             </div>
           ) : !hasVideo && (hasOgs || (kgsInline && games.length)) ? (
             // No stream to load: the boards open with their own button.
@@ -546,7 +647,7 @@ export default class BroadcastCard extends Component<Props, State> {
               {getBroadcastStatus(games)}
             </div>
           ) : null}
-          {this._renderOgsStatus()}
+          {this._renderOgsStatus(games)}
           {games.length ? (
             <GameList
               games={games}

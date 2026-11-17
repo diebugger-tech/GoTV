@@ -203,6 +203,11 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   localStorage), Chat einklappbar, Esc beendet. Es wechseln nur CSS-Klassen, das
   Stream-Iframe wird nicht neu geladen. Nach Layoutwechsel wird ein `resize`-Event
   ausgelöst, weil `BoardContainer` seine Größe nur darauf neu misst.
+- Brett-Verzögerung (`src/model/DelayBuffer.js`, Regler in `BroadcastCard`, 0-120 s,
+  `gotv.boardDelay` in localStorage): die Karte zeigt jedes Brett so, wie es vor N
+  Sekunden war. Verzögert wird der ganze Partie-Schnappschuss, also Züge, Ergebnis,
+  Uhren, Chat, Brettliste und Statuszeile gemeinsam — nichts nimmt das Video vorweg.
+  Gilt für KGS- und OGS-Bretter; ein 500-ms-Timer läuft nur bei Verzögerung > 0.
 - `src/ui/tv/TvSourceBadge.js` — Badge "KGS"/"OGS" an jedem Brett der TV-Brettliste
   (`GameList` mit `showSource`) und im Kopf von `TvGamePanel`. Watch bleibt ohne Badge.
 - `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben

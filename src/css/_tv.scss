@@ -742,3 +742,24 @@ $cinema-bar-height: 44px;
     }
   }
 }
+
+// "Brett-Verzögerung": lets the boards lag to match the video.
+.BroadcastCard-delay {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 10px;
+  font-size: 13px;
+
+  input {
+    width: 120px;
+  }
+
+  &-value {
+    min-width: 36px;
+  }
+}
+
+.BroadcastCard-cinema-bar .BroadcastCard-delay {
+  margin: 0;
+}
