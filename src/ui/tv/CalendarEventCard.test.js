@@ -33,7 +33,7 @@ describe("calendar board availability", () => {
     [
       { ogs_game_id: 123 },
       { boardCount: 0, ogsBoardCount: 1 },
-      "Stream + 1 OGS-Brett · Live-Züge und Partiechat",
+      "Stream + 1 OGS-Brett · Live-Züge",
     ],
     [
       { ogs_game_id: 123 },

@@ -1,5 +1,6 @@
 // @flow
 import { parseSgf, getSgfRootProp } from "./sgf";
+import { buildOgsSgf, getOgsTimeRules, parseOgsClocks } from "./OgsGameData";
 import {
   getLiveEvents,
   getLiveGames as getActiveLiveGames,
@@ -20,7 +21,8 @@ import type {
 } from "./types";
 
 const OGS_API_URL = "https://online-go.com/api/v1/games/";
-const DEFAULT_POLL_INTERVAL_MS = 10000;
+// One anonymous request per poll while a game runs (see fetchGame).
+const DEFAULT_POLL_INTERVAL_MS = 5000;
 
 type Fetch = (url: string, options?: Object) => Promise<any>;
 type OgsGameListener = (?GameChannel, ?string) => void;
@@ -90,8 +92,15 @@ function getOgsPlayer(raw: Object, rank: ?string): User {
   };
 }
 
-export function parseOgsGame(data: Object, sgf: string): GameChannel {
-  let tree = parseSgf(sgf, { skipI: false });
+// sgf: OGS' own SGF export, which anonymous clients only get once the game
+// has ended (it carries the game chat). Without it the tree is built from the
+// moves in the detail response, so a running game still shows its board.
+export function parseOgsGame(
+  data: Object,
+  sgf?: ?string,
+  now?: number
+): GameChannel {
+  let tree = parseSgf(sgf || buildOgsSgf(data), { skipI: false });
   let gameId = Number(data.id);
   let rawPlayers = data.players || {};
   let players = {
@@ -99,6 +108,7 @@ export function parseOgsGame(data: Object, sgf: string): GameChannel {
     white: getOgsPlayer(rawPlayers.white || {}, getSgfRootProp(tree, "WR")),
   };
   let rules: GameRules = {
+    ...getOgsTimeRules(data),
     size: typeof data.width === "number" ? data.width : 19,
     komi:
       typeof data.komi === "number"
@@ -134,7 +144,6 @@ export function parseOgsGame(data: Object, sgf: string): GameChannel {
     moveNum,
     roomId: 0,
     rules,
-    sgfUrl: OGS_API_URL + gameId + "/sgf",
     tree,
     event: true,
     over: !!data.ended,
@@ -144,8 +153,16 @@ export function parseOgsGame(data: Object, sgf: string): GameChannel {
   if (data.name) {
     game.name = data.name;
   }
+  if (data.ended) {
+    // OGS refuses anonymous SGF downloads while a game is in progress.
+    game.sgfUrl = OGS_API_URL + gameId + "/sgf";
+  }
   if (score) {
     game.score = score;
+  }
+  let clocks = parseOgsClocks(data, now === undefined ? Date.now() : now);
+  if (clocks) {
+    game.clocks = clocks;
   }
   return game;
 }
@@ -212,23 +229,27 @@ export class OgsTvSource implements TvSource {
     }));
   }
 
+  // A running game needs only the detail request. The SGF (with the chat) is
+  // fetched once the game has ended; if that fails the board still comes
+  // from the detail response.
   fetchGame(gameId: number): Promise<GameChannel> {
     let url = OGS_API_URL + gameId;
-    return Promise.all([
-      this._fetch(url, { credentials: "omit" }),
-      this._fetch(url + "/sgf", { credentials: "omit" }),
-    ]).then(([gameResponse, sgfResponse]) => {
-      if (!gameResponse.ok) {
-        throw new Error("OGS HTTP " + gameResponse.status);
-      }
-      if (!sgfResponse.ok) {
-        throw new Error("OGS SGF HTTP " + sgfResponse.status);
-      }
-      return Promise.all([
-        gameResponse.json(),
-        sgfResponse.text(),
-      ]).then(([data, sgf]) => parseOgsGame(data, sgf));
-    });
+    return this._fetch(url, { credentials: "omit" })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error("OGS HTTP " + response.status);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (!data.ended) {
+          return parseOgsGame(data);
+        }
+        return this._fetch(url + "/sgf", { credentials: "omit" })
+          .then((response) => (response.ok ? response.text() : null))
+          .catch(() => null)
+          .then((sgf) => parseOgsGame(data, sgf));
+      });
   }
 
   observeGame(gameId: number, listener: OgsGameListener): () => void {
@@ -284,6 +305,11 @@ export class OgsTvSource implements TvSource {
         let current = this._entries[gameId];
         if (current) {
           current.loading = false;
+          if (game.over && current.timer) {
+            // A finished game no longer changes: stop asking OGS.
+            clearInterval(current.timer);
+            current.timer = null;
+          }
           current.listeners.forEach((listener) => listener(game, null));
         }
       },

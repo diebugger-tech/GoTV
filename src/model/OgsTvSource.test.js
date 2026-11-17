@@ -20,22 +20,55 @@ const SGF = `(;FF[4]SZ[19]PB[Surma]PW[Ovsiienko]BR[4p]WR[6d]RE[B+R]
 C[Fan: Spannende Partie\nOther Fan: Viel Erfolg]
 ;B[ij];W[aa]C[Fan: Erster Kommentar zum Zug])`;
 
-function responseFor(url) {
+const LIVE_DATA = {
+  ...GAME_DATA,
+  players: {
+    black: { id: 1, username: "Surma", ranking: 40.2, professional: true },
+    white: { id: 2, username: "Ovsiienko", ranking: 35.7 },
+  },
+  gamedata: {
+    phase: "play",
+    initial_player: "black",
+    moves: [
+      [8, 9, 1200],
+      [0, 0, 900],
+      [15, 3, 700],
+    ],
+    time_control: { system: "fischer" },
+    clock: {
+      current_player: 2,
+      black_player_id: 1,
+      white_player_id: 2,
+      last_move: 1000000,
+      black_time: { thinking_time: 120 },
+      white_time: { thinking_time: 90 },
+    },
+  },
+};
+const ENDED_DATA = { ...LIVE_DATA, ended: "2026-11-22T18:20:00Z" };
+
+function responseFor(url, data = LIVE_DATA) {
   if (url.endsWith("/sgf")) {
     return { ok: true, text: () => Promise.resolve(SGF) };
   }
-  return { ok: true, json: () => Promise.resolve(GAME_DATA) };
+  return { ok: true, json: () => Promise.resolve(data) };
 }
 
+// Enough ticks for the detail request, the SGF request and both parsers.
+const PROMISE_TICKS = 20;
+
 async function flushPromises() {
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < PROMISE_TICKS; i++) {
     await Promise.resolve();
   }
 }
 
 describe("OgsTvSource game adapter", () => {
   it("adapts OGS metadata, standard SGF coordinates, latest moves and chat", () => {
-    let game = parseOgsGame(GAME_DATA, SGF);
+    let game = parseOgsGame(
+      { ...GAME_DATA, ended: "2026-11-22T18:20:00Z" },
+      SGF
+    );
     expect(game).toMatchObject({
       id: 123,
       type: "tournament",
@@ -43,7 +76,7 @@ describe("OgsTvSource game adapter", () => {
       event: true,
       sgfUrl: "https://online-go.com/api/v1/games/123/sgf",
       moveNum: 2,
-      over: false,
+      over: true,
       score: "B+RESIGN",
       players: {
         black: { name: "Surma", rank: "4p", rankVal: 14 },
@@ -63,6 +96,41 @@ describe("OgsTvSource game adapter", () => {
     let state = game.tree.computedState[game.tree.activeNode];
     expect(state.board[9][8]).toBe("black");
     expect(state.board[18][0]).toBe("white");
+  });
+
+  it("builds a running game from the detail response when OGS withholds the SGF", () => {
+    let game = parseOgsGame(LIVE_DATA, null, 1010000);
+    expect(game).toMatchObject({
+      id: 123,
+      tvSource: "ogs",
+      moveNum: 3,
+      over: false,
+      players: {
+        black: { name: "Surma", rank: "4p", rankVal: 14 },
+        white: { name: "Ovsiienko", rank: "6d", rankVal: 6 },
+      },
+      clocks: {
+        black: { time: 120, running: false },
+        white: { time: 80, running: true },
+      },
+    });
+    expect(game.score).toBe(undefined);
+    expect(game.sgfUrl).toBe(undefined);
+    let state = game.tree.computedState[game.tree.activeNode];
+    expect(state.board[9][8]).toBe("black");
+    expect(state.board[18][0]).toBe("white");
+    expect(state.board[15][15]).toBe("black");
+    expect(game.tree.messages[game.tree.activeNode]).toEqual([]);
+  });
+
+  it("builds the same position from the detail response as from the SGF", () => {
+    let sgf = "(;SZ[19];B[ij];W[aa];B[pd])";
+    let fromSgf = parseOgsGame(LIVE_DATA, sgf);
+    let fromData = parseOgsGame(LIVE_DATA);
+    expect(fromData.tree.currentLine).toEqual(fromSgf.tree.currentLine);
+    expect(fromData.tree.computedState[fromData.tree.activeNode].board).toEqual(
+      fromSgf.tree.computedState[fromSgf.tree.activeNode].board
+    );
   });
 
   it("provides an empty message list for pass actions without chat", () => {
@@ -108,7 +176,7 @@ describe("OgsTvSource anonymous polling", () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it("fetches anonymously, polls while observed and stops on release", async () => {
+  it("polls a running game with one anonymous request and stops on release", async () => {
     let fetchMock = jest.fn((url) => Promise.resolve(responseFor(url)));
     let source = new OgsTvSource(fetchMock, 1000);
     let listener = jest.fn();
@@ -116,22 +184,60 @@ describe("OgsTvSource anonymous polling", () => {
     await flushPromises();
     expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
       "https://online-go.com/api/v1/games/123",
-      "https://online-go.com/api/v1/games/123/sgf",
     ]);
     expect(
       fetchMock.mock.calls.every((call) => call[1].credentials === "omit")
     ).toBe(true);
     expect(listener).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 123, moveNum: 2 }),
+      expect.objectContaining({ id: 123, moveNum: 3, over: false }),
       null
     );
     jest.advanceTimersByTime(1000);
     await flushPromises();
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     release();
     release();
     jest.advanceTimersByTime(3000);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("loads the SGF with the chat once the game has ended and stops polling", async () => {
+    let fetchMock = jest.fn((url) =>
+      Promise.resolve(responseFor(url, ENDED_DATA))
+    );
+    let source = new OgsTvSource(fetchMock, 1000);
+    let listener = jest.fn();
+    source.observeGame(123, listener);
+    await flushPromises();
+    expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+      "https://online-go.com/api/v1/games/123",
+      "https://online-go.com/api/v1/games/123/sgf",
+    ]);
+    let game = listener.mock.calls[0][0];
+    expect(game).toMatchObject({ over: true, score: "B+RESIGN", moveNum: 2 });
+    expect(game.clocks).toBe(undefined);
+    expect(game.tree.messages[2][0].body).toBe("Erster Kommentar zum Zug");
+    jest.advanceTimersByTime(5000);
+    await flushPromises();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the board of an ended game when its SGF is unavailable", async () => {
+    let fetchMock = jest.fn((url) =>
+      Promise.resolve(
+        url.endsWith("/sgf")
+          ? { ok: false, status: 403 }
+          : responseFor(url, ENDED_DATA)
+      )
+    );
+    let source = new OgsTvSource(fetchMock, 1000);
+    let listener = jest.fn();
+    source.observeGame(123, listener);
+    await flushPromises();
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 123, moveNum: 3, over: true }),
+      null
+    );
   });
 
   it("reports request errors without inventing a board", async () => {
