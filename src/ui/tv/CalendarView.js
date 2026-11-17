@@ -2,6 +2,7 @@
 import React, { PureComponent as Component } from "react";
 import CalendarEventCard from "./CalendarEventCard";
 import ChannelCard from "./ChannelCard";
+import CalendarMonth from "./CalendarMonth";
 import { Spinner } from "../common";
 import {
   validateTvEvent,
@@ -27,12 +28,26 @@ type Props = {
   renderChannel?: (TvChannel) => Node,
 };
 
+type CalendarViewMode = "month" | "list";
+
 type State = {
   status: "loading" | "ready" | "error",
   events: Array<TvEvent>,
   channels: Array<TvChannel>,
   now: number,
+  // "month": calendar sheet; "list": region groups, Sender and Archiv.
+  view: CalendarViewMode,
 };
+
+const VIEW_KEY = "gotv.calendarView";
+
+function loadView(): CalendarViewMode {
+  try {
+    return window.localStorage.getItem(VIEW_KEY) === "list" ? "list" : "month";
+  } catch (err) {
+    return "month"; // storage disabled
+  }
+}
 
 // The Kalender zone (today+upcoming+past, i.e. everything groupEventsByTime
 // has not archived yet) and the Archiv zone are each grouped by region
@@ -52,7 +67,43 @@ export default class CalendarView extends Component<Props, State> {
     events: [],
     channels: [],
     now: Date.now(),
+    view: loadView(),
   };
+
+  _onSelectView = (e: Object) => {
+    let view =
+      e.currentTarget.getAttribute("data-view") === "list" ? "list" : "month";
+    this.setState({ view });
+    try {
+      window.localStorage.setItem(VIEW_KEY, view);
+    } catch (err) {
+      // Not remembered without storage.
+    }
+  };
+
+  _renderViewSwitch() {
+    let { view } = this.state;
+    return (
+      <div className="CalendarView-switch">
+        {[
+          ["month", "Monat"],
+          ["list", "Liste"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            data-view={id}
+            onClick={this._onSelectView}
+            className={
+              "CalendarView-switch-item" +
+              (view === id ? " CalendarView-switch-item-active" : "")
+            }>
+            {label}
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   componentDidMount() {
     this._mounted = true;
@@ -175,6 +226,20 @@ export default class CalendarView extends Component<Props, State> {
       );
     }
 
+    if (this.state.view === "month") {
+      return (
+        <div className="CalendarView">
+          {this._renderViewSwitch()}
+          <CalendarMonth
+            events={events}
+            now={this.state.now}
+            onOpenReplay={this.props.onOpenReplay}
+            renderEvent={this.props.renderEvent}
+          />
+        </div>
+      );
+    }
+
     let timeGroups = groupEventsByTime(events, new Date(this.state.now));
     let calendarEvents = [
       ...timeGroups.today,
@@ -186,6 +251,7 @@ export default class CalendarView extends Component<Props, State> {
 
     return (
       <div className="CalendarView">
+        {this._renderViewSwitch()}
         {REGION_ORDER.map((regionKey) =>
           this._renderRegionGroup(
             (regionKey: any),
