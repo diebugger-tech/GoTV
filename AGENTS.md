@@ -159,20 +159,31 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
 - `src/util/urls.js` — extract_urls/normalize_url (Port von chat_panel.rs).
 - `src/model/sgf.js` — SGF-Parser (Port von sgf.rs, erweitert um Varianten) → GameTree;
   OGS nutzt `parseSgf(..., {skipI: false})` für Standard-SGF-Koordinaten.
-- `src/model/OgsTvSource.js` — anonyme OGS-REST-/SGF-Adapter zu GameChannel, 10-s-Polling
-  nur für `ogs_game_id` aus einem Kalender-Event und nur bei geöffnetem Stream.
+- `src/model/OgsTvSource.js` — anonymer OGS-REST-Adapter zu GameChannel, 5-s-Polling
+  (ein Request) nur für `ogs_game_id` aus einem Kalender-Event und nur bei geöffnetem
+  Stream; stoppt bei Partieende. OGS liefert das SGF laufender Partien anonym NICHT
+  (HTTP 403 "Sign in to download SGF of in-progress games", gemessen 17.11.2026):
+  laufende Partien kommen deshalb aus `gamedata` des Detail-Abrufs
+  (`src/model/OgsGameData.js`: Züge → SGF-Text, Ränge, Uhren); das SGF mit dem
+  Partiechat wird erst nach Partieende einmal geladen.
+- `src/ui/tv/TvSourceBadge.js` — Badge "KGS"/"OGS" an jedem Brett der TV-Brettliste
+  (`GameList` mit `showSource`) und im Kopf von `TvGamePanel`. Watch bleibt ohne Badge.
 - `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben
   Beobachter-Komponenten wie GameScreen (GamePlayersInfo, GameInfo, UserList, GameChat,
   ChatMessageBar, GameMoreMenu); Zurückspulen bleibt bei Live-Updates erhalten,
-  "letzter Zug" kehrt zum automatischen Folgen zurück. OGS-Chat ist anonym read-only;
-  `game.sgfUrl` gibt GameMoreMenu die quellenneutrale SGF-URL.
+  "letzter Zug" kehrt zum automatischen Folgen zurück. OGS-Chat ist anonym read-only
+  und erscheint erst nach Partieende; `game.sgfUrl` gibt GameMoreMenu die
+  quellenneutrale SGF-URL (bei OGS erst nach Partieende gesetzt).
 - `public/tv/events.json` — Event-Daten (fetch beim Öffnen des TV-Tabs).
 - Nav-Punkt "tv": types.js (NavOption) + index.js (isValidNav) + meta/Nav.js + Main.js.
 - Stream-Öffnen aus dem Chat: dispatch `TV_OPEN_STREAM` {url} → nav "tv" → TvScreen zeigt
   Zwei-Klick-Platzhalter; Embed-Builder in `src/ui/tv/StreamEmbed.js`.
 - Dev-Harness: `src/index.js` enthält einen NODE_ENV-gegateten Block (`#tv-dev`), der den
-  TV-Tab mit simulierten Daten rendert (5 Fake-Partien, synthetische Kalender-Events,
-  Chat-Messages mit Stream-Links, Replay). Er wird im Production-Build von terser
+  TV-Tab mit simulierten Daten rendert (6 Fake-Partien inkl. einer Event-Vorlesung, die
+  NICHT unter Live erscheinen darf; Übertragung mit Brett, Übertragung nur mit Stream,
+  Turnierseite ohne Video; Chat-Messages mit Stream-Links, Replay). Zusätzlich lädt das
+  Event `dev-today-ogs` die historische OGS-Partie 2 real und anonym für den API-/UI-Test.
+  `TvScreen` nimmt dafür optional rohe `events` (wie `CalendarView`). Er wird im Production-Build von terser
   weggefaltet — nach jedem Build prüfen:
   `grep -rl "GO-TV-DEV-HARNESS" build/` darf nichts finden. Deshalb auch
   `GENERATE_SOURCEMAP=false` im build-Script (sonst stünde der Quelltext in den .map-Dateien).
@@ -218,8 +229,8 @@ Policy, von dir als "Stufe 1" bezeichnet:
 
 - [x] Phase 0 — Lauffähig: yarn via corepack, dart-sass, NODE_OPTIONS; Login-Screen + Build grün
 - [x] Phase 1 — Bestandsaufnahme (Abschnitt "Bestand")
-- [x] Phase 2 — Go TV: Live-Top-Partien (Rang-Sortierung/"Dan only") — wird durch
-      den TV-Quellen-Grundsatz oben teilweise ersetzt (Schritt 2 offen)
+- [x] Phase 2 — Go TV: Live-Top-Partien (Rang-Sortierung/"Dan only") — ersetzt durch
+      den TV-Quellen-Grundsatz oben (Live = Übertragungen mit Videokanal)
 - [x] Phase 3 — Turnierkalender
 - [x] Phase 4 — Stream-Links im Chat
 - [x] Phase 5 — Nachspielen (SGF-Replay) (Commit be3f25d)
@@ -227,14 +238,14 @@ Policy, von dir als "Stufe 1" bezeichnet:
 - [x] Desktop-Paket (GNOME): lokaler Server, Proxy-Korrektur, DNS-Rebinding-Guard,
       Launcher/Icon/.desktop, install.sh/uninstall.sh
       (Commits 05c4082, 9f9dc18, 86a901e, 41fed13, 1959ce5, 98655e7, 38cab76)
-- [ ] TV-Quellen-Grundsatz, Schritte 2-5 (siehe Abschnitt oben) — NICHT gebaut
-- [ ] events.json Schema v2: `channel`-Feld (YouTube Channel-ID / Twitch-Login),
-      Live-Kanal-Embeds (`embed/live_stream?channel=…`,
-      `player.twitch.tv/?channel=…`), Archiv nach 14 Tagen, die 4 alten
-      Platzhalter-Events entfernen, Remote-Fetch von GitHub mit 1h-Cache
-      (lokale Datei bleibt Offline-Fallback) — angekündigt, NICHT gebaut
-      (Stand events.json, Commit a0b9bcc: noch altes Schema + 4 Platzhalter
-      + 1 Beispiel-Event)
+- [x] TV-Quellen-Grundsatz, Schritte 1-5 (siehe Abschnitt oben)
+- [x] events.json Schema v2: `channel`-Feld, Live-Kanal-Embeds (415b1d7), Archiv nach
+      14 Tagen (41d7f58), Platzhalter entfernt (19697b1), Remote-Fetch von GitHub mit
+      1h-Cache + lokalem Fallback (edceeaf); dazu `channels[]` (f3fcbea), `region`
+      (b0f404c), `kgs_room`/`kgs_players` (8285331), `duration_minutes` (379b73a)
+- [x] OGS-Bretter für Kalender-Übertragungen: `ogs_game_id`, anonymer REST-Adapter,
+      Live-Polling aus `gamedata` (Züge, Uhren), OGS-Partiechat nach Partieende,
+      Quellen-Badge KGS/OGS, Wiederverwendung von BoardContainer/TvGamePanel
 - [ ] App-Name + Icon: Name noch offen, bestimmt Icon-Design und Desktop-Branding
 
 ## Bestand (Phase 1)
@@ -290,7 +301,8 @@ Policy, von dir als "Stufe 1" bezeichnet:
   neue Tests gezielt laufen lassen: `CI=true yarn test --watchAll=false --testPathPattern="src/(model|util)"`.
 - Dev-Server ohne TTY beendet sich nach dem Banner still (start.js: stdin-Ende) →
   Hintergrundstart nur mit `CI=true`.
-- Port 3000 ist auf diesem Rechner dauerhaft fremdbelegt → Dev-Server mit `PORT=3100`.
+- Port 3000 ist auf diesem Rechner dauerhaft fremdbelegt (firecrawl-mcp, 13.11.2026)
+  → Dev-Server mit `PORT=3100` (oder einem anderen freien Port).
 - Production-Build ohne Sourcemaps (`GENERATE_SOURCEMAP=false`) — nötig, damit der
   Dev-Harness-Quelltext nicht über sourcesContent im Build landet.
 
