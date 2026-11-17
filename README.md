@@ -1,8 +1,8 @@
-# <img src="./desktop/icons/gotv.svg" width="32"> GoTV
-
 <p align="center">
-  <img src="./desktop/icons/png/gotv-256.png" width="128" alt="GoTV app icon: a Go board as a TV screen">
+  <img src="./desktop/icons/png/gotv-512.png" width="240" alt="GoTV app icon: a Go board as a TV screen">
 </p>
+
+<h1 align="center">GoTV</h1>
 
 GoTV adds live Go broadcasts, a tournament calendar, and SGF replay on top
 of a JavaScript client for [KGS Go Server](http://www.gokgs.com/).
