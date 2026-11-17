@@ -370,6 +370,48 @@ describe("OgsTvSource anonymous polling", () => {
       );
     });
 
+    it("follows a series from one linked game without listed players", async () => {
+      let fetchMock = jest.fn(seriesFetch);
+      let source = new OgsTvSource(fetchMock, 1000, 3000);
+      let listener = jest.fn();
+      let linked = { ...event, ogs_players: undefined, ogs_game_id: 501 };
+      ended[501] = true;
+      listed = [listEntry(502), listEntry(501, "2026-11-22T18:30:00Z")];
+      source.observeEvent(linked, listener);
+      await flushPromises();
+      expect(listener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 501, over: true }),
+        null
+      );
+      jest.advanceTimersByTime(3000);
+      await flushPromises();
+      expect(
+        fetchMock.mock.calls.some((call) =>
+          call[0].includes("/players/?username=Surma")
+        )
+      ).toBe(true);
+      expect(listener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 502, over: false }),
+        null
+      );
+    });
+
+    it("never goes back to an older game of the same players", async () => {
+      let fetchMock = jest.fn(seriesFetch);
+      let source = new OgsTvSource(fetchMock, 1000, 3000);
+      let listener = jest.fn();
+      ended[501] = true;
+      listed = [listEntry(400), listEntry(501, "2026-11-22T18:30:00Z")];
+      source.observeEvent({ ...event, ogs_game_id: 501 }, listener);
+      await flushPromises();
+      jest.advanceTimersByTime(6000);
+      await flushPromises();
+      expect(listener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 501 }),
+        null
+      );
+    });
+
     it("uses a fixed ogs_game_id directly when the calendar has one", async () => {
       let fetchMock = jest.fn(seriesFetch);
       let source = new OgsTvSource(fetchMock, 1000, 3000);

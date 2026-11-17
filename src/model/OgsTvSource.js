@@ -37,6 +37,7 @@ const DEFAULT_FIND_INTERVAL_MS = 15000;
 // safety net: every 12th poll (once a minute at the default interval).
 const LIVE_REST_EVERY_N_POLLS = 12;
 const LIVE_CHAT_CHANNELS = ["main", "spectator"];
+const UNKNOWN_PLAYER = "Unknown";
 const FIND_PAGE_SIZE = 10;
 // One anonymous request per poll while a game runs (see fetchGame).
 const DEFAULT_POLL_INTERVAL_MS = 5000;
@@ -112,7 +113,7 @@ function addOgsChatMessages(tree: GameTree, gameId: number) {
 function getOgsPlayer(raw: Object, rank: ?string): User {
   let displayRank = rank || "?";
   return {
-    name: raw.username || "Unknown",
+    name: raw.username || UNKNOWN_PLAYER,
     rank: displayRank,
     rankVal: parseRankVal(displayRank),
   };
@@ -377,48 +378,64 @@ export class OgsTvSource implements TvSource {
       );
   }
 
-  // Observes the OGS board of a calendar broadcast: a fixed ogs_game_id, or
-  // the current game of its ogs_players. With players the board follows a
-  // series by itself: while a game runs only that game is polled; once it is
-  // over (or before the first one) the player's game list is checked for the
-  // next game.
+  // Observes the OGS board of a calendar broadcast: a fixed ogs_game_id
+  // and/or the current game of its ogs_players. The board follows a series
+  // by itself: while a game runs only that game is observed; once it is over
+  // (or before the first one) the player's game list is checked for the next
+  // game. A fixed game without ogs_players takes the players from the game
+  // itself, so one link is enough for a whole best-of-five.
   observeEvent(event: TvEvent, listener: OgsGameListener): () => void {
-    if (event.ogs_game_id) {
-      return this.observeGame(event.ogs_game_id, listener);
-    }
-    let players = event.ogs_players;
-    if (!players || !players.length) {
+    let fixedId = event.ogs_game_id;
+    let names: ?Array<string> =
+      event.ogs_players && event.ogs_players.length ? event.ogs_players : null;
+    if (!fixedId && !names) {
       return () => {};
     }
-    let names = players;
     let windowStartMs = getLiveWindow(event).start.getTime();
     let released = false;
     let searching = false;
     let currentId: ?number = null;
     let currentGame: ?GameChannel = null;
     let releaseGame: ?() => void = null;
+    let follow = (gameId: number) => {
+      if (releaseGame) {
+        releaseGame();
+      }
+      currentId = gameId;
+      currentGame = null;
+      releaseGame = this.observeGame(gameId, (game, error) => {
+        if (currentId !== gameId) {
+          return;
+        }
+        currentGame = game || currentGame;
+        if (game && !names) {
+          let found = [game.players.black, game.players.white]
+            .map((player) => (player ? player.name : ""))
+            .filter((name) => name && name !== UNKNOWN_PLAYER);
+          names = found.length === 2 ? found : null;
+        }
+        listener(game, error);
+      });
+    };
     let search = () => {
-      if (released || searching || (currentGame && !currentGame.over)) {
+      let players = names;
+      // Nothing to look for while a game runs or the fixed one still loads.
+      if (
+        released ||
+        searching ||
+        !players ||
+        (currentId && (!currentGame || !currentGame.over))
+      ) {
         return;
       }
       searching = true;
-      this.findGameId(names, windowStartMs).then(
+      this.findGameId(players, windowStartMs).then(
         (gameId) => {
           searching = false;
-          if (released || !gameId || gameId === currentId) {
+          if (released || !gameId || (currentId && gameId <= currentId)) {
             return;
           }
-          if (releaseGame) {
-            releaseGame();
-          }
-          currentId = gameId;
-          currentGame = null;
-          releaseGame = this.observeGame(gameId, (game, error) => {
-            if (currentId === gameId) {
-              currentGame = game || currentGame;
-              listener(game, error);
-            }
-          });
+          follow(gameId);
         },
         (err) => {
           searching = false;
@@ -431,6 +448,9 @@ export class OgsTvSource implements TvSource {
         }
       );
     };
+    if (fixedId) {
+      follow(fixedId);
+    }
     let timer = setInterval(search, this._findIntervalMs);
     search();
     return () => {

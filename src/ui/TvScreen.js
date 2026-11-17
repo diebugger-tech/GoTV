@@ -17,6 +17,8 @@ import {
 } from "../model/tv";
 import { kgsTvSource } from "../model/TvSource";
 import type { TvEvent, TvBroadcast } from "../model/tv";
+import { applyOgsLinks, loadOgsLinks, saveOgsLinks } from "../model/OgsLinks";
+import type { OgsLinks } from "../model/OgsLinks";
 import type {
   GameChannel,
   Room,
@@ -46,6 +48,8 @@ type State = {
   replayUrl: ?string,
   tvEventsStatus: "loading" | "ready" | "error",
   tvEvents: Array<TvEvent>,
+  // OGS boards the viewer assigned to events by hand (this browser only).
+  ogsLinks: OgsLinks,
   now: number,
 };
 
@@ -57,6 +61,7 @@ export default class TvScreen extends Component<Props, State> {
     replayUrl: null,
     tvEventsStatus: "loading",
     tvEvents: [],
+    ogsLinks: loadOgsLinks(),
     now: Date.now(),
   };
 
@@ -113,6 +118,17 @@ export default class TvScreen extends Component<Props, State> {
       });
   };
 
+  _onAssignOgsLink = (eventId: string, gameId: ?number) => {
+    let ogsLinks = { ...this.state.ogsLinks };
+    if (gameId) {
+      ogsLinks[eventId] = gameId;
+    } else {
+      delete ogsLinks[eventId];
+    }
+    saveOgsLinks(ogsLinks);
+    this.setState({ ogsLinks });
+  };
+
   _renderBroadcast = (broadcast: TvBroadcast) => {
     let {
       roomsById,
@@ -132,6 +148,8 @@ export default class TvScreen extends Component<Props, State> {
         usersByName={usersByName}
         actions={actions}
         now={this.state.now}
+        onAssignOgsLink={this._onAssignOgsLink}
+        hasManualOgsLink={!!this.state.ogsLinks[broadcast.event.id]}
         connectionKey={
           clientState ? clientState.status + "/" + clientState.network : ""
         }
@@ -148,7 +166,8 @@ export default class TvScreen extends Component<Props, State> {
       tvStreamUrl,
       tvReplayGameId,
     } = this.props;
-    let { activeTabId, replayUrl, tvEvents } = this.state;
+    let { activeTabId, replayUrl } = this.state;
+    let tvEvents = applyOgsLinks(this.state.tvEvents, this.state.ogsLinks);
 
     let now = new Date(this.state.now);
     let broadcasts = kgsTvSource.getLiveBroadcasts(

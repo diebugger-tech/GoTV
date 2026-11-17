@@ -285,6 +285,65 @@ describe("BroadcastCard live status", () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
+  it("assigns an OGS game link at the card and rejects other input", () => {
+    let onAssignOgsLink = jest.fn();
+    render([], { onAssignOgsLink });
+    expect(container.querySelector(".BroadcastCard-link-input")).toBe(null);
+    act(() => container.querySelector(".BroadcastCard-link-toggle").click());
+    let input = container.querySelector(".BroadcastCard-link-input");
+    let submit = (value) => {
+      act(() => {
+        let setter = Object.getOwnPropertyDescriptor(
+          HTMLInputElement.prototype,
+          "value"
+        ).set;
+        setter.call(input, value);
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      act(() => {
+        container
+          .querySelector("form.BroadcastCard-link")
+          .dispatchEvent(
+            new Event("submit", { bubbles: true, cancelable: true })
+          );
+      });
+    };
+    submit("https://example.org/game/5");
+    expect(container.querySelector(".BroadcastCard-link-error")).not.toBe(null);
+    expect(onAssignOgsLink).not.toHaveBeenCalled();
+    submit("https://online-go.com/game/92121029");
+    expect(onAssignOgsLink).toHaveBeenCalledWith("cup", 92121029);
+    expect(container.querySelector(".BroadcastCard-link-input")).toBe(null);
+  });
+
+  it("offers to remove a manual link and switches boards when the link changes", () => {
+    let onAssignOgsLink = jest.fn();
+    let releases = [];
+    let observe = jest
+      .spyOn(ogsTvSource, "observeEvent")
+      .mockImplementation(() => {
+        let release = jest.fn();
+        releases.push(release);
+        return release;
+      });
+    let props = { onAssignOgsLink, hasManualOgsLink: true };
+    render([], {
+      ...props,
+      broadcast: { event: { ...event, ogs_game_id: 1 }, games: [] },
+    });
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    expect(observe).toHaveBeenCalledTimes(1);
+    render([], {
+      ...props,
+      broadcast: { event: { ...event, ogs_game_id: 2 }, games: [] },
+    });
+    expect(releases[0]).toHaveBeenCalledTimes(1);
+    expect(observe).toHaveBeenCalledTimes(2);
+    expect(observe.mock.calls[1][0].ogs_game_id).toBe(2);
+    act(() => container.querySelector(".BroadcastCard-link-remove").click());
+    expect(onAssignOgsLink).toHaveBeenCalledWith("cup", null);
+  });
+
   it("opens an explicitly linked OGS board anonymously and releases its polling", () => {
     let release = jest.fn();
     let tree = parseSgf("(;SZ[9];B[aa])");

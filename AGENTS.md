@@ -183,6 +183,12 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   Partie zuerst, sonst die zuletzt beendete), und folgt einer Serie (Bo5) selbst zur
   nächsten Partie. Während eine Partie läuft, wird nur sie gepollt; davor/danach die
   Partieliste des ersten Spielers alle 15 s. Eine `ogs_game_id` hat Vorrang.
+- `src/model/OgsLinks.js` — "OGS-Partielink zuordnen" an der Übertragungskarte: der
+  Zuschauer trägt einen Link `https://online-go.com/game/<id>` ein, gespeichert nur in
+  localStorage (`gotv.ogsLinks`, pro Event-ID), events.json bleibt unberührt. Der Link
+  ersetzt die OGS-Zuordnung des Events; `observeEvent` nimmt die Spieler aus der
+  verlinkten Partie und wechselt nach Partieende selbst zur nächsten Partie derselben
+  zwei Spieler (nie zurück zu einer älteren).
 - `src/ui/tv/TvSourceBadge.js` — Badge "KGS"/"OGS" an jedem Brett der TV-Brettliste
   (`GameList` mit `showSource`) und im Kopf von `TvGamePanel`. Watch bleibt ohne Badge.
 - `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben

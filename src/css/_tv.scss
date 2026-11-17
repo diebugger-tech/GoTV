@@ -525,3 +525,44 @@
   vertical-align: middle;
   margin-right: 8px;
 }
+
+// "OGS-Partielink zuordnen" on a broadcast card.
+.BroadcastCard-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
+
+  &-toggle {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: $link-color;
+    font-size: 13px;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+
+  &-remove {
+    color: $semi-muted;
+  }
+
+  &-input {
+    flex: 1;
+    min-width: 180px;
+    padding: 5px 8px;
+    border: 1px solid $input-border;
+    border-radius: 3px;
+    font-size: 13px;
+  }
+
+  &-error {
+    flex-basis: 100%;
+    color: #c0392b;
+    font-size: 13px;
+  }
+}
