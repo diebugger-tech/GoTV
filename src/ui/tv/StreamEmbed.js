@@ -5,6 +5,8 @@ import {
   getEmbedUrlForEvent,
   getEmbedUrlForChannel,
   getStreamUrlInfo,
+  hasLinkedBoard,
+  hasVideoStream,
 } from "../../model/tv";
 import type { TvEvent, TvChannel, StreamUrlInfo } from "../../model/tv";
 
@@ -70,12 +72,17 @@ export default class StreamEmbed extends Component<Props, State> {
     let info = this._getInfo();
     let title = this._getTitle();
     let platformLabel = PLATFORM_LABEL[info.platform];
+    let event = this.props.event;
+    // A tournament without a stream that is listed for its linked boards.
+    let noVideo = !!event && !hasVideoStream(event) && hasLinkedBoard(event);
 
     if (!info.embedUrl) {
       return (
         <div className="StreamEmbed">
           <div className="StreamEmbed-notice">
-            {platformLabel
+            {noVideo
+              ? "Für dieses Turnier ist kein Videostream hinterlegt."
+              : platformLabel
               ? "Dieser Stream kann nicht direkt eingebettet werden (" +
                 platformLabel +
                 ")."
@@ -86,7 +93,7 @@ export default class StreamEmbed extends Component<Props, State> {
             href={info.externalUrl}
             target="_blank"
             rel="noopener noreferrer">
-            Extern öffnen
+            {noVideo ? "Turnierseite öffnen" : "Extern öffnen"}
           </a>
         </div>
       );

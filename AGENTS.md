@@ -218,6 +218,13 @@ Policy, von dir als "Stufe 1" bezeichnet:
   (a) KGS-Partien mit `game.event === true` (offiziell übertragene Turnierpartien),
   (b) Kalender-Events (Phase 3), die gerade live sind.
   Alle anderen aktiven KGS-Partien gehören nur in "Watch".
+- **Sehenswert-Regel (17.11.2026, ersetzt "nur mit Videokanal" vom 13.11.):** Ein
+  Kalender-Event erscheint unter Live, wenn es gerade läuft UND etwas zu sehen ist:
+  Videokanal ODER zugeordnetes Brett (`kgs_room`/`kgs_players`/`ogs_game_id`/
+  `ogs_players`) — `isWatchable` in `src/model/tv.js`. Große Turniere ohne Stream
+  stehen also mit ihren Brettern unter Live ("Brett öffnen" statt "Stream laden");
+  gibt es einen Stream, läuft er daneben. Ein Event ohne Video und ohne Brett bleibt
+  nur im Kalender.
 - **TvSource-Interface:** Implementiert sind `KgsTvSource` und `OgsTvSource`.
   OGS liefert ausschließlich Bretter zu expliziten `ogs_game_id`- oder
   `ogs_players`-Feldern im Kalender, niemals eine Rangliste beliebiger laufender

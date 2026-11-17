@@ -191,13 +191,13 @@ if (
     },
     {
       id: "dev-today-ogs-players",
-      name: "Dev-Test: OGS-Brett per Spielername (folgt der aktuellen Partie)",
+      name: "Dev-Test: Turnier ohne Stream, OGS-Brett per Spielername",
       date_start: devDaysFromNow(0),
-      platform: "twitch",
-      stream_url: "https://www.twitch.tv/example_channel",
+      platform: "other",
+      stream_url: "https://example.org/turnier",
       ogs_players: ["amybot-beginner"],
       notes:
-        "Echter anonymer OGS-API-Test: heutige Partie eines OGS-Bots, wechselt nach Partieende zur nächsten.",
+        "Echter anonymer OGS-API-Test: heutige Partie eines OGS-Bots, wechselt nach Partieende zur nächsten. Ohne Video, erscheint wegen des Bretts trotzdem unter Live.",
     },
     {
       id: "dev-today-no-video",

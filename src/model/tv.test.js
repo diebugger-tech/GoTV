@@ -22,6 +22,7 @@ import {
   _resetTvEventsCache,
   REMOTE_EVENTS_URL,
   hasOgsBoard,
+  isWatchable,
 } from "./tv";
 
 function makeUser(name, rankVal) {
@@ -841,6 +842,24 @@ describe("validateTvEvent kgs fields", () => {
     expect(validateTvEvent({ ...base, ogs_players: ["Surma", ""] })).toBe(null);
   });
 
+  it("counts an event as watchable with a video channel or a linked board", () => {
+    let noVideo = { ...base, platform: "other" };
+    expect(isWatchable(validateTvEvent(base))).toBe(true);
+    expect(isWatchable(validateTvEvent(noVideo))).toBe(false);
+    expect(isWatchable(validateTvEvent({ ...noVideo, kgs_room: "EGF" }))).toBe(
+      true
+    );
+    expect(
+      isWatchable(validateTvEvent({ ...noVideo, kgs_players: ["a"] }))
+    ).toBe(true);
+    expect(
+      isWatchable(validateTvEvent({ ...noVideo, ogs_players: ["a"] }))
+    ).toBe(true);
+    expect(isWatchable(validateTvEvent({ ...noVideo, ogs_game_id: 5 }))).toBe(
+      true
+    );
+  });
+
   it("knows whether a broadcast is linked to an OGS board", () => {
     expect(hasOgsBoard(validateTvEvent(base))).toBe(false);
     expect(hasOgsBoard(validateTvEvent({ ...base, ogs_game_id: 5 }))).toBe(
@@ -884,28 +903,32 @@ describe("getLiveBroadcasts", () => {
     ...extra,
   });
 
-  it("lists every live video broadcast with its matching boards", () => {
+  it("lists every live event that has a video channel or linked boards", () => {
     let games = [
       game(1, "a", "b"),
       game(2, "c", "d"),
-      game(3, "x", "y"), // event game without broadcast -> not in Live
+      game(3, "x", "y"),
+      game(4, "p", "q"), // event game without broadcast -> not in Live
     ];
+    let pageOnly = {
+      name: "Turnierseite",
+      date_start: "2026-06-15",
+      platform: "other",
+      stream_url: "https://example.com",
+    };
     let events = [
       live("cup", { kgs_players: ["a", "c"] }),
       live("youtube-only"), // international, no KGS boards
-      validateTvEvent({
-        id: "page-only",
-        name: "Turnierseite",
-        date_start: "2026-06-15",
-        platform: "other",
-        stream_url: "https://example.com",
-        kgs_players: ["x"],
-      }),
+      // Big tournament without a stream: listed for its boards.
+      validateTvEvent({ ...pageOnly, id: "boards-only", kgs_players: ["x"] }),
+      // Neither stream nor boards: calendar only.
+      validateTvEvent({ ...pageOnly, id: "page-only" }),
     ];
     let result = getLiveBroadcasts(games, events, {}, now);
     expect(result.map((b) => [b.event.id, b.games.map((g) => g.id)])).toEqual([
       ["cup", [1, 2]],
       ["youtube-only", []],
+      ["boards-only", [3]],
     ]);
   });
 

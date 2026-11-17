@@ -2,7 +2,12 @@
 import React, { PureComponent as Component } from "react";
 import StreamEmbed from "./StreamEmbed";
 import { formatLocaleDate, formatLocaleTime } from "../../util/date";
-import { getLiveWindow, hasOgsBoard, hasVideoStream } from "../../model/tv";
+import {
+  getLiveWindow,
+  hasOgsBoard,
+  hasVideoStream,
+  isWatchable,
+} from "../../model/tv";
 import type { TvEvent } from "../../model/tv";
 
 type Props = {
@@ -27,7 +32,7 @@ function getBoardStatus(
     let source = kgsCount && ogsCount ? "" : ogsCount ? "OGS-" : "KGS-";
     let mixed = kgsCount && ogsCount ? " (KGS + OGS)" : "";
     return (
-      "Stream + " +
+      (hasVideoStream(event) ? "Stream + " : "") +
       total +
       (total === 1 ? " " + source + "Brett" : " " + source + "Bretter") +
       mixed +
@@ -50,7 +55,11 @@ function getBoardStatus(
   if (hasOgsBoard(event)) {
     return (
       "OGS-Zuordnung hinterlegt" +
-      (ogsBoardCount === 0 ? " · Brett lädt beim Öffnen des Streams" : "")
+      (ogsBoardCount === 0
+        ? hasVideoStream(event)
+          ? " · Brett lädt beim Öffnen des Streams"
+          : " · Brett lädt beim Öffnen"
+        : "")
     );
   }
   if (hasKgs) {
@@ -105,7 +114,7 @@ export default class CalendarEventCard extends Component<Props> {
         {event.notes ? (
           <div className="CalendarEvent-notes">{event.notes}</div>
         ) : null}
-        {hasVideoStream(event) || event.sgf_url ? (
+        {isWatchable(event) || event.sgf_url ? (
           <div
             className={
               "CalendarEvent-board-status" +

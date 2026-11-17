@@ -256,6 +256,22 @@ export function hasVideoStream(event: TvEvent): boolean {
   );
 }
 
+// Whether the calendar links boards to this event (KGS room/players, OGS).
+export function hasLinkedBoard(event: TvEvent): boolean {
+  return !!(
+    event.kgs_room ||
+    (event.kgs_players && event.kgs_players.length) ||
+    hasOgsBoard(event)
+  );
+}
+
+// TV -> Live shows what can be watched right now: a video channel, a linked
+// board, or both. Big tournaments without a stream count with their boards
+// (Andreas, 17.11.2026); an event with neither stays in the calendar only.
+export function isWatchable(event: TvEvent): boolean {
+  return hasVideoStream(event) || hasLinkedBoard(event);
+}
+
 // region's effective value for display/grouping purposes - missing on an
 // event (e.g. every hand-maintained entry predating this field) means
 // "intl", not an error (see validateTvEvent).
@@ -717,9 +733,10 @@ export type TvBroadcast = {
   games: Array<GameChannel>,
 };
 
-// TV -> Live: every broadcast that is live right now AND has a video channel,
-// each with the KGS boards relayed for it (may be none - e.g. an
-// international tournament shown on YouTube only). KGS event games that
+// TV -> Live: every event that is live right now AND can be watched (video
+// channel and/or linked boards, see isWatchable), each with the KGS boards
+// relayed for it (may be none - e.g. an international tournament shown on
+// YouTube only, or one whose boards are on OGS). KGS event games that
 // match no broadcast are not part of Live. Keep finished boards still present
 // in the list so the card can show their status during the live broadcast.
 export function getLiveBroadcasts(
@@ -738,7 +755,7 @@ export function getLiveBroadcasts(
       game.players.white
   );
   return getLiveEvents(events, now)
-    .filter(hasVideoStream)
+    .filter(isWatchable)
     .map((event) => ({
       event,
       games: eventGames.filter((game) =>

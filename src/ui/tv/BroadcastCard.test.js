@@ -246,6 +246,45 @@ describe("BroadcastCard live status", () => {
     expect(onJoinGame).not.toHaveBeenCalled();
   });
 
+  it("opens the boards of a tournament without a stream with their own button", () => {
+    let release = jest.fn();
+    let tree = parseSgf("(;SZ[9];B[aa])");
+    tree.activeNode = tree.currentLine[1];
+    let observe = jest
+      .spyOn(ogsTvSource, "observeEvent")
+      .mockImplementation((tvEvent, listener) => {
+        listener({ ...game, id: 7, tvSource: "ogs", tree, moveNum: 1 }, null);
+        return release;
+      });
+    render([], {
+      broadcast: {
+        event: {
+          ...event,
+          platform: "other",
+          stream_url: "https://example.org/turnier",
+          ogs_players: ["Surma", "Ovsiienko"],
+        },
+        games: [],
+      },
+    });
+    expect(container.querySelector(".StreamEmbed-actions")).toBe(null);
+    expect(container.textContent).toContain(
+      "Für dieses Turnier ist kein Videostream hinterlegt."
+    );
+    expect(container.textContent).toContain("Turnierseite öffnen");
+    expect(container.textContent).toContain("OGS-Brett verfügbar");
+    expect(observe).not.toHaveBeenCalled();
+    act(() => container.querySelector(".BroadcastCard-open-boards").click());
+    expect(observe).toHaveBeenCalledTimes(1);
+    expect(container.querySelector(".TvGamePanel")).not.toBe(null);
+    expect(container.querySelector(".BroadcastCard-open-boards")).toBe(null);
+    expect(
+      container.querySelector(".CalendarEvent-board-status").textContent
+    ).toBe("1 OGS-Brett · Live-Züge und Partiechat");
+    act(() => container.querySelector(".BroadcastCard-close").click());
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
   it("opens an explicitly linked OGS board anonymously and releases its polling", () => {
     let release = jest.fn();
     let tree = parseSgf("(;SZ[9];B[aa])");

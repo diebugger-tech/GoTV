@@ -4,7 +4,7 @@ import GameList from "../game/GameList";
 import CalendarEventCard from "./CalendarEventCard";
 import TvGamePanel from "./TvGamePanel";
 import { ogsTvSource } from "../../model/OgsTvSource";
-import { hasOgsBoard } from "../../model/tv";
+import { hasOgsBoard, hasVideoStream } from "../../model/tv";
 import type { TvBroadcast } from "../../model/tv";
 import type { GameChannel, Room, User, AppActions, Index } from "../../model";
 
@@ -156,6 +156,7 @@ export default class BroadcastCard extends Component<Props, State> {
       games.find((game) => getGameKey(game) === selectedGameKey) ||
       games.find((game) => !game.over) ||
       games[0];
+    let hasVideo = hasVideoStream(event);
     let kgsInline = !!(currentUser && actions);
     let inline = !!(streamLoaded && (hasOgs || kgsInline));
     let boardTitle;
@@ -169,12 +170,16 @@ export default class BroadcastCard extends Component<Props, State> {
           : games.length + " Bretter auf " + source;
     } else if (hasOgs) {
       boardTitle = !streamLoaded
-        ? "OGS-Brett beim Öffnen des Streams verfügbar"
+        ? hasVideo
+          ? "OGS-Brett beim Öffnen des Streams verfügbar"
+          : "OGS-Brett verfügbar"
         : event.ogs_game_id
         ? "OGS-Brett wird geladen …"
         : "OGS-Brett erscheint, sobald die Partie läuft";
     } else {
-      boardTitle = "Kein KGS-Brett – nur Stream";
+      boardTitle = hasVideo
+        ? "Kein KGS-Brett – nur Stream"
+        : "Derzeit kein passendes KGS-Brett online";
     }
     let canRenderSelected = !!(
       selectedGame &&
@@ -197,6 +202,13 @@ export default class BroadcastCard extends Component<Props, State> {
               className="Button BroadcastCard-close"
               onClick={this._onClose}>
               Übertragung schließen
+            </button>
+          ) : !hasVideo && (hasOgs || (kgsInline && games.length)) ? (
+            // No stream to load: the boards open with their own button.
+            <button
+              className="Button BroadcastCard-open-boards"
+              onClick={this._onStreamLoad}>
+              {games.length > 1 ? "Bretter öffnen" : "Brett öffnen"}
             </button>
           ) : null}
           <div className="BroadcastCard-boards-title">{boardTitle}</div>
