@@ -83,6 +83,21 @@ export function getEventsOnDay(
     .sort((a, b) => startTime(a) - startTime(b));
 }
 
+// The lowest row that no entry uses on any of the given days.
+function getFreeSlot(cells: Array<MonthCell>): number {
+  let used = {};
+  for (let cell of cells) {
+    for (let entry of cell.entries) {
+      used[entry.slot] = true;
+    }
+  }
+  let slot = 0;
+  while (used[slot]) {
+    slot++;
+  }
+  return slot;
+}
+
 // One week: every event gets the lowest row that is free on all of its days
 // in this week, longest and earliest first, so bars do not jump rows.
 function fillWeek(week: Array<MonthCell>, events: Array<TvEvent>) {
@@ -109,12 +124,7 @@ function fillWeek(week: Array<MonthCell>, events: Array<TvEvent>) {
     let cells = week.filter(
       (cell) => range.start <= cell.key && cell.key <= range.end
     );
-    let slot = 0;
-    while (
-      cells.some((cell) => cell.entries.some((entry) => entry.slot === slot))
-    ) {
-      slot++;
-    }
+    let slot = getFreeSlot(cells);
     for (let cell of cells) {
       cell.entries.push({
         event,
