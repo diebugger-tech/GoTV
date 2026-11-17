@@ -10,19 +10,27 @@ type Props = {
   onOpenReplay?: (string) => any,
   onStreamLoad?: () => any,
   boardCount?: number,
+  ogsBoardCount?: number,
   now?: number,
 };
 
 function getBoardStatus(
   event: TvEvent,
   boardCount: ?number,
+  ogsBoardCount: ?number,
   now: number
 ): string {
-  if (boardCount && boardCount > 0) {
+  let kgsCount = boardCount || 0;
+  let ogsCount = ogsBoardCount || 0;
+  let total = kgsCount + ogsCount;
+  if (total > 0) {
+    let source = kgsCount && ogsCount ? "" : ogsCount ? "OGS-" : "KGS-";
+    let mixed = kgsCount && ogsCount ? " (KGS + OGS)" : "";
     return (
       "Stream + " +
-      boardCount +
-      (boardCount === 1 ? " KGS-Brett" : " KGS-Bretter") +
+      total +
+      (total === 1 ? " " + source + "Brett" : " " + source + "Bretter") +
+      mixed +
       " · Live-Züge und Partiechat"
     );
   }
@@ -32,7 +40,20 @@ function getBoardStatus(
   if (getLiveWindow(event).end.getTime() < now) {
     return "Termin vorbei · kein Live-Brett verfügbar";
   }
-  if (event.kgs_room || (event.kgs_players && event.kgs_players.length)) {
+  let hasKgs = !!(
+    event.kgs_room ||
+    (event.kgs_players && event.kgs_players.length)
+  );
+  if (hasKgs && event.ogs_game_id) {
+    return "KGS-/OGS-Zuordnungen hinterlegt · derzeit kein Brett geladen";
+  }
+  if (event.ogs_game_id) {
+    return (
+      "OGS-Zuordnung hinterlegt" +
+      (ogsBoardCount === 0 ? " · Brett lädt beim Öffnen des Streams" : "")
+    );
+  }
+  if (hasKgs) {
     return (
       "KGS-Zuordnung hinterlegt" +
       (boardCount === 0 ? " · derzeit kein passendes Brett online" : "")
@@ -66,7 +87,7 @@ export function formatEventDateRange(event: TvEvent): string {
 // (Kalender tab) and TvScreen's Live tab (currently-live entries).
 export default class CalendarEventCard extends Component<Props> {
   render() {
-    let { event, onOpenReplay, boardCount, now } = this.props;
+    let { event, onOpenReplay, boardCount, ogsBoardCount, now } = this.props;
     return (
       <div className="CalendarEvent">
         <div className="CalendarEvent-header">
@@ -88,11 +109,14 @@ export default class CalendarEventCard extends Component<Props> {
           <div
             className={
               "CalendarEvent-board-status" +
-              (boardCount ? " CalendarEvent-board-status-linked" : "")
+              (boardCount || ogsBoardCount
+                ? " CalendarEvent-board-status-linked"
+                : "")
             }>
             {getBoardStatus(
               event,
               boardCount,
+              ogsBoardCount,
               now === undefined ? Date.now() : now
             )}
           </div>

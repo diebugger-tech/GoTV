@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import { act } from "react-dom/test-utils";
 import BroadcastCard from "./BroadcastCard";
 import { parseSgf } from "../../model/sgf";
+import { ogsTvSource } from "../../model/OgsTvSource";
 
 describe("BroadcastCard live status", () => {
   let container;
@@ -166,5 +167,37 @@ describe("BroadcastCard live status", () => {
     expect(render([])).toBe(null);
     expect(container.textContent).toContain("Kein KGS-Brett – nur Stream");
     expect(onJoinGame).not.toHaveBeenCalled();
+  });
+
+  it("opens an explicitly linked OGS board anonymously and releases its polling", () => {
+    let release = jest.fn();
+    let tree = parseSgf("(;SZ[9];B[aa])");
+    tree.activeNode = tree.currentLine[1];
+    let observe = jest
+      .spyOn(ogsTvSource, "observeGame")
+      .mockImplementation((gameId, listener) => {
+        listener(
+          { ...game, id: gameId, tvSource: "ogs", tree, moveNum: 1 },
+          null
+        );
+        return release;
+      });
+    render([], {
+      broadcast: {
+        event: { ...event, ogs_game_id: 123 },
+        games: [{ ...game, id: 123 }],
+      },
+    });
+    expect(observe).not.toHaveBeenCalled();
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    expect(observe).toHaveBeenCalledWith(123, expect.any(Function));
+    expect(container.querySelector(".TvGamePanel")).toBe(null);
+    act(() => container.querySelectorAll(".GameList-item")[1].click());
+    expect(container.querySelector(".TvGamePanel")).not.toBe(null);
+    expect(container.textContent).toContain("OGS-Partiechat");
+    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(1);
+    expect(onJoinGame).not.toHaveBeenCalled();
+    act(() => container.querySelector(".BroadcastCard-close").click());
+    expect(release).toHaveBeenCalledTimes(1);
   });
 });

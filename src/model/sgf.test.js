@@ -137,6 +137,13 @@ describe("parseSgf - Takao vs So 2014 (13x13)", () => {
 });
 
 describe("parseSgf - passes and errors", () => {
+  it("supports standard SGF coordinates without skipping i", () => {
+    let tree = parseSgf("(;SZ[19];B[ij])", { skipI: false });
+    let firstNode = tree.nodes[tree.rootNode].children[0];
+    let move = tree.nodes[firstNode].props.find((p) => p.name === "MOVE");
+    expect(move.loc).toEqual({ x: 8, y: 9 });
+  });
+
   it("treats empty and tt values as pass", () => {
     let tree = parseSgf("(;GM[1]SZ[19];B[aa];W[];B[tt])");
     let node1 = tree.nodes[tree.rootNode].children[0];

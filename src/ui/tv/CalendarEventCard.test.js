@@ -26,6 +26,21 @@ describe("calendar board availability", () => {
       "Stream + 2 KGS-Bretter · Live-Züge und Partiechat",
     ],
     [
+      { ogs_game_id: 123 },
+      { boardCount: 0, ogsBoardCount: 0 },
+      "OGS-Zuordnung hinterlegt · Brett lädt beim Öffnen des Streams",
+    ],
+    [
+      { ogs_game_id: 123 },
+      { boardCount: 0, ogsBoardCount: 1 },
+      "Stream + 1 OGS-Brett · Live-Züge und Partiechat",
+    ],
+    [
+      { ogs_game_id: 123 },
+      { boardCount: 1, ogsBoardCount: 1 },
+      "Stream + 2 Bretter (KGS + OGS) · Live-Züge und Partiechat",
+    ],
+    [
       { date_start: "2026-11-08" },
       {},
       "Termin vorbei · kein Live-Brett verfügbar",

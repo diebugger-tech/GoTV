@@ -1,7 +1,6 @@
 // @flow
-// Abstraction for where Go TV content comes from, so a future second
-// source doesn't mean rewriting TvScreen/GameScreen - see IgsTvSource below
-// for why there's only one implementation today.
+// Abstraction for where Go TV content comes from. KGS and the explicitly
+// calendar-linked OGS source share this interface; IGS remains blocked below.
 import {
   getLiveEventGames,
   getLiveEvents,
@@ -33,10 +32,9 @@ export interface TvSource {
   ): Array<TvBroadcast>;
 }
 
-// The only implemented TvSource: KGS, via the data KgsClient already parses
-// onto GameChannel/AppState (game.event, events.json). The UI used to call
-// these model/tv functions directly; this class is the seam a second source
-// would plug into without TvScreen/GameScreen caring where the data is from.
+// KGS uses the data KgsClient already parses onto GameChannel/AppState
+// (game.event, events.json). OgsTvSource implements the same interface for
+// explicit calendar game IDs; IgsTvSource below remains deliberately blocked.
 export class KgsTvSource implements TvSource {
   getLiveGames(activeGames: Array<GameChannel>): Array<GameChannel> {
     return getLiveEventGames(activeGames);
@@ -65,8 +63,8 @@ export class KgsTvSource implements TvSource {
   }
 }
 
-// Pandanet/IGS as a second TvSource is deliberately NOT built: its terms of
-// use haven't been reviewed (contact per the Pandanet FAQ:
+// Pandanet/IGS is deliberately NOT built: its terms of use haven't been
+// reviewed (contact per the Pandanet FAQ:
 // developer@pandanet-igs.com). desktop/goTV_local.py's /igs-bridge route
 // answers 501 for the same reason. This class only documents the shape a
 // future IGS source would have to fill - every method throws, so wiring it
@@ -97,5 +95,5 @@ export class IgsTvSource implements TvSource {
   }
 }
 
-// Shared instance - the only TvSource the app wires up today.
+// Shared KGS instance; the OGS instance lives in OgsTvSource.js.
 export const kgsTvSource: TvSource = new KgsTvSource();

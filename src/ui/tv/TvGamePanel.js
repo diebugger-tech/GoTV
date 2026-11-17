@@ -8,9 +8,9 @@ import type { GameChannel, User, Index, AppActions } from "../../model";
 
 type Props = {
   game: GameChannel,
-  currentUser: User,
+  currentUser?: ?User,
   usersByName: Index<User>,
-  actions: AppActions,
+  actions?: AppActions,
   connectionKey?: string,
 };
 
@@ -48,7 +48,10 @@ export default class TvGamePanel extends Component<Props> {
   }
 
   _subscribe = () => {
-    this._release = this.props.actions.onObserveTvGame(this.props.game.id);
+    let { actions, game } = this.props;
+    if (game.tvSource !== "ogs" && actions) {
+      this._release = actions.onObserveTvGame(game.id);
+    }
   };
 
   _scrollChat = () => {
@@ -64,6 +67,7 @@ export default class TvGamePanel extends Component<Props> {
   render() {
     let { game, currentUser, usersByName, actions } = this.props;
     let tree = game.tree;
+    let source = game.tvSource === "ogs" ? "OGS" : "KGS";
     let liveGame = tree
       ? {
           ...game,
@@ -85,17 +89,19 @@ export default class TvGamePanel extends Component<Props> {
             <BoardContainer game={liveGame} embedded />
           </div>
         ) : (
-          <div className="TvGamePanel-notice">Brett wird von KGS geladen …</div>
+          <div className="TvGamePanel-notice">
+            Brett wird von {source} geladen …
+          </div>
         )}
-        <div className="TvGamePanel-chat-title">KGS-Partiechat</div>
+        <div className="TvGamePanel-chat-title">{source}-Partiechat</div>
         <div className="TvGamePanel-chat" ref={this._setChatRef}>
           {sections.length ? (
             <GameChat
-              currentUser={currentUser}
+              currentUser={currentUser || { name: "" }}
               chatSections={sections}
               usersByName={usersByName}
-              onUserDetail={actions.onUserDetail}
-              onOpenTv={actions.onOpenTvStream}
+              onUserDetail={actions ? actions.onUserDetail : () => {}}
+              onOpenTv={actions ? actions.onOpenTvStream : () => {}}
             />
           ) : (
             <div className="TvGamePanel-notice">

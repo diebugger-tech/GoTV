@@ -181,6 +181,15 @@ if (
       notes: "Synthetisch: Übertragung ohne KGS-Brett.",
     },
     {
+      id: "dev-today-ogs",
+      name: "Dev-Test: Historische OGS-Partie mit Brett und Chat",
+      date_start: devDaysFromNow(0),
+      platform: "twitch",
+      stream_url: "https://www.twitch.tv/example_channel",
+      ogs_game_id: 2,
+      notes: "Echter anonymer OGS-API-Test mit der bereits beendeten Partie 2.",
+    },
+    {
       id: "dev-today-no-video",
       name: "Dev-Test: Turnierseite ohne Video (darf NICHT unter Live)",
       date_start: devDaysFromNow(0),

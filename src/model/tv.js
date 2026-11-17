@@ -54,6 +54,8 @@ export type TvEvent = {
   // the KGS room the games are relayed in and/or the players' KGS names.
   kgs_room?: string,
   kgs_players?: Array<string>,
+  // An explicitly assigned OGS board; never a query for arbitrary live games.
+  ogs_game_id?: number,
   // With "start": how long the broadcast runs (default LIVE_DEFAULT_MINUTES).
   duration_minutes?: number,
 };
@@ -158,6 +160,15 @@ export function validateTvEvent(value: Object): ?TvEvent {
     return null;
   }
   if (
+    value.ogs_game_id !== undefined &&
+    value.ogs_game_id !== null &&
+    (typeof value.ogs_game_id !== "number" ||
+      !Number.isInteger(value.ogs_game_id) ||
+      value.ogs_game_id <= 0)
+  ) {
+    return null;
+  }
+  if (
     value.duration_minutes !== undefined &&
     value.duration_minutes !== null &&
     (typeof value.duration_minutes !== "number" ||
@@ -202,6 +213,9 @@ export function validateTvEvent(value: Object): ?TvEvent {
   }
   if (value.kgs_players && value.kgs_players.length) {
     event.kgs_players = value.kgs_players.map((name) => name.trim());
+  }
+  if (value.ogs_game_id) {
+    event.ogs_game_id = value.ogs_game_id;
   }
   if (value.duration_minutes) {
     event.duration_minutes = value.duration_minutes;

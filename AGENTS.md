@@ -157,7 +157,10 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
 - `src/model/tv.js` — pure Logik: Sortierung nach Spielstärke, Event-/URL-Parsing-Helfer.
 - `src/ui/TvScreen.js` — TV-Tab mit Bereichen Live / Kalender / Nachspielen (TabNav).
 - `src/util/urls.js` — extract_urls/normalize_url (Port von chat_panel.rs).
-- `src/model/sgf.js` — SGF-Parser (Port von sgf.rs, erweitert um Varianten) → GameTree.
+- `src/model/sgf.js` — SGF-Parser (Port von sgf.rs, erweitert um Varianten) → GameTree;
+  OGS nutzt `parseSgf(..., {skipI: false})` für Standard-SGF-Koordinaten.
+- `src/model/OgsTvSource.js` — anonyme OGS-REST-/SGF-Adapter zu GameChannel, 10-s-Polling
+  nur für `ogs_game_id` aus einem Kalender-Event und nur bei geöffnetem Stream.
 - `public/tv/events.json` — Event-Daten (fetch beim Öffnen des TV-Tabs).
 - Nav-Punkt "tv": types.js (NavOption) + index.js (isValidNav) + meta/Nav.js + Main.js.
 - Stream-Öffnen aus dem Chat: dispatch `TV_OPEN_STREAM` {url} → nav "tv" → TvScreen zeigt
@@ -181,9 +184,10 @@ Policy, von dir als "Stufe 1" bezeichnet:
   (a) KGS-Partien mit `game.event === true` (offiziell übertragene Turnierpartien),
   (b) Kalender-Events (Phase 3), die gerade live sind.
   Alle anderen aktiven KGS-Partien gehören nur in "Watch".
-- **TvSource-Interface:** `KgsTvSource` ist die einzige implementierte Quelle. Ein
-  zweiter Quellentyp ist im Interface vorgesehen; `IgsTvSource` (Pandanet/IGS) ist
-  absichtlich BLOCKIERT — `/igs-bridge` in `goTV_local.py` antwortet 501, bis die
+- **TvSource-Interface:** Implementiert sind `KgsTvSource` und `OgsTvSource`.
+  OGS liefert ausschließlich Bretter zu expliziten `ogs_game_id`-Feldern im Kalender,
+  niemals eine Rangliste beliebiger laufender OGS-Partien. `IgsTvSource` (Pandanet/IGS)
+  ist absichtlich BLOCKIERT — `/igs-bridge` in `goTV_local.py` antwortet 501, bis die
   IGS-Nutzungsbedingungen geprüft sind (Kontakt laut Pandanet-FAQ:
   `developer@pandanet-igs.com`).
 

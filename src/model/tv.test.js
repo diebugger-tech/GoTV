@@ -823,6 +823,15 @@ describe("validateTvEvent kgs fields", () => {
     expect(validateTvEvent({ ...base, kgs_players: "a" })).toBe(null);
     expect(validateTvEvent({ ...base, kgs_players: ["a", ""] })).toBe(null);
   });
+
+  it("keeps a positive integer OGS game ID and rejects malformed IDs", () => {
+    expect(validateTvEvent({ ...base, ogs_game_id: 123 }).ogs_game_id).toBe(
+      123
+    );
+    expect(validateTvEvent({ ...base, ogs_game_id: "123" })).toBe(null);
+    expect(validateTvEvent({ ...base, ogs_game_id: 0 })).toBe(null);
+    expect(validateTvEvent({ ...base, ogs_game_id: 1.5 })).toBe(null);
+  });
 });
 
 describe("hasVideoStream", () => {

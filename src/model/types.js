@@ -336,6 +336,7 @@ export type GameChannel = {
   users?: Array<string>,
   accessDenied?: string,
   undoRequest?: GameRole,
+  tvSource?: "kgs" | "ogs",
   // Flags
   global?: boolean,
   over?: boolean,

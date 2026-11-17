@@ -10,7 +10,7 @@ import type { GameChannel, GameFilter, Room, Index } from "../../model";
 type Props = {
   game: GameChannel,
   room: ?Room,
-  onSelect: (number) => any,
+  onSelect: (number, GameChannel) => any,
 };
 
 class GameListItem extends Component<Props> {
@@ -79,7 +79,7 @@ class GameListItem extends Component<Props> {
   }
 
   _onSelect = () => {
-    this.props.onSelect(this.props.game.id);
+    this.props.onSelect(this.props.game.id, this.props.game);
   };
 }
 
@@ -87,7 +87,7 @@ type GameListProps = {
   games: Array<GameChannel>,
   filter?: GameFilter,
   roomsById?: Index<Room>,
-  onSelect: (number) => any,
+  onSelect: (number, GameChannel) => any,
 };
 
 type State = {
@@ -138,7 +138,7 @@ export default class GameList extends Component<GameListProps, State> {
         {displayGames.length ? (
           displayGames.map((game) => (
             <GameListItem
-              key={game.id}
+              key={(game.tvSource || "kgs") + "-" + game.id}
               game={game}
               room={roomsById ? roomsById[game.roomId] : null}
               onSelect={onSelect}

@@ -3,6 +3,7 @@ import React, { PureComponent as Component } from "react";
 import GameList from "../game/GameList";
 import CalendarEventCard from "./CalendarEventCard";
 import TvGamePanel from "./TvGamePanel";
+import { ogsTvSource } from "../../model/OgsTvSource";
 import type { TvBroadcast } from "../../model/tv";
 import type { GameChannel, Room, User, AppActions, Index } from "../../model";
 
@@ -21,8 +22,14 @@ type Props = {
 type State = {
   streamLoaded: boolean,
   streamKey: number,
-  selectedGameId: ?number,
+  selectedGameKey: ?string,
+  ogsGames: Array<GameChannel>,
+  ogsError: ?string,
 };
+
+function getGameKey(game: GameChannel): string {
+  return (game.tvSource || "kgs") + "-" + game.id;
+}
 
 // List metadata only: never join a game to determine its status or move.
 function getBroadcastStatus(games: Array<GameChannel>): string {
@@ -61,46 +68,115 @@ function getBroadcastStatus(games: Array<GameChannel>): string {
 }
 
 // One entry of TV -> Live: the video broadcast (two-click embed via
-// CalendarEventCard) plus the KGS boards relayed for it, to watch the game
-// on the board next to the commentary. A broadcast without KGS boards
-// (e.g. an international tournament shown on YouTube only) just says so.
+// CalendarEventCard) plus its explicitly assigned KGS/OGS boards. OGS data
+// loads only while the broadcast is open and never requires a KGS login.
 export default class BroadcastCard extends Component<Props, State> {
-  state = { streamLoaded: false, streamKey: 0, selectedGameId: null };
+  _releaseOgs: ?() => void;
+  state = {
+    streamLoaded: false,
+    streamKey: 0,
+    selectedGameKey: null,
+    ogsGames: [],
+    ogsError: null,
+  };
+
+  componentWillUnmount() {
+    if (this._releaseOgs) {
+      this._releaseOgs();
+    }
+  }
 
   _onStreamLoad = () => {
     this.setState({ streamLoaded: true });
+    let gameId = this.props.broadcast.event.ogs_game_id;
+    if (gameId && !this._releaseOgs) {
+      this._releaseOgs = ogsTvSource.observeGame(gameId, (game, error) => {
+        this.setState({ ogsGames: game ? [game] : [], ogsError: error });
+      });
+    }
   };
 
   _onClose = () => {
+    if (this._releaseOgs) {
+      this._releaseOgs();
+      this._releaseOgs = null;
+    }
     this.setState((state) => ({
       streamLoaded: false,
       streamKey: state.streamKey + 1,
-      selectedGameId: null,
+      selectedGameKey: null,
     }));
   };
 
-  _onSelectBoard = (selectedGameId: number) => {
-    this.setState({ selectedGameId });
+  _onSelectBoard = (selectedGameId: number, selectedGame: GameChannel) => {
+    let games = [...this.props.broadcast.games, ...this.state.ogsGames];
+    let game =
+      selectedGame ||
+      games.find((candidate) => candidate.id === selectedGameId);
+    let selectedGameKey = getGameKey(game);
+    let kgsInline = !!(
+      this.state.streamLoaded &&
+      this.props.currentUser &&
+      this.props.actions
+    );
+    if (game.tvSource === "ogs") {
+      if (!this.state.streamLoaded) {
+        this._onStreamLoad();
+      }
+      this.setState({ selectedGameKey });
+    } else if (kgsInline) {
+      this.setState({ selectedGameKey });
+    } else {
+      this.props.onJoinGame(selectedGameId);
+    }
   };
 
   render() {
     let {
       broadcast,
       roomsById,
-      onJoinGame,
       onOpenReplay,
       currentUser,
       usersByName,
       actions,
       connectionKey,
     } = this.props;
-    let { event, games } = broadcast;
-    let { streamLoaded, streamKey, selectedGameId } = this.state;
+    let { event, games: kgsGames } = broadcast;
+    let {
+      streamLoaded,
+      streamKey,
+      selectedGameKey,
+      ogsGames,
+      ogsError,
+    } = this.state;
+    let games = [...kgsGames, ...ogsGames];
+    let hasOgs = !!event.ogs_game_id;
     let selectedGame =
-      games.find((game) => game.id === selectedGameId) ||
+      games.find((game) => getGameKey(game) === selectedGameKey) ||
       games.find((game) => !game.over) ||
       games[0];
-    let inline = !!(streamLoaded && currentUser && actions);
+    let kgsInline = !!(currentUser && actions);
+    let inline = !!(streamLoaded && (hasOgs || kgsInline));
+    let boardTitle;
+    if (kgsGames.length && (hasOgs || ogsGames.length)) {
+      boardTitle = "Bretter der Übertragung (KGS + OGS)";
+    } else if (games.length) {
+      let source = ogsGames.length ? "OGS" : "KGS";
+      boardTitle =
+        games.length === 1
+          ? "Brett auf " + source
+          : games.length + " Bretter auf " + source;
+    } else if (hasOgs) {
+      boardTitle = streamLoaded
+        ? "OGS-Brett wird geladen …"
+        : "OGS-Brett beim Öffnen des Streams verfügbar";
+    } else {
+      boardTitle = "Kein KGS-Brett – nur Stream";
+    }
+    let canRenderSelected = !!(
+      selectedGame &&
+      (selectedGame.tvSource === "ogs" || kgsInline)
+    );
     return (
       <div className={"BroadcastCard" + (inline ? " BroadcastCard-open" : "")}>
         <CalendarEventCard
@@ -108,7 +184,8 @@ export default class BroadcastCard extends Component<Props, State> {
           event={event}
           onOpenReplay={onOpenReplay}
           onStreamLoad={this._onStreamLoad}
-          boardCount={games.length}
+          boardCount={kgsGames.length}
+          ogsBoardCount={ogsGames.length}
           now={this.props.now}
         />
         <div className="BroadcastCard-boards">
@@ -119,13 +196,12 @@ export default class BroadcastCard extends Component<Props, State> {
               Übertragung schließen
             </button>
           ) : null}
-          <div className="BroadcastCard-boards-title">
-            {games.length
-              ? games.length === 1
-                ? "Brett auf KGS"
-                : games.length + " Bretter auf KGS"
-              : "Kein KGS-Brett – nur Stream"}
-          </div>
+          <div className="BroadcastCard-boards-title">{boardTitle}</div>
+          {ogsError && !ogsGames.length ? (
+            <div className="TvGamePanel-notice">
+              OGS-Brett konnte nicht geladen werden: {ogsError}
+            </div>
+          ) : null}
           {games.length ? (
             <div className="BroadcastCard-boards-status">
               {getBroadcastStatus(games)}
@@ -135,12 +211,12 @@ export default class BroadcastCard extends Component<Props, State> {
             <GameList
               games={games}
               roomsById={roomsById}
-              onSelect={inline ? this._onSelectBoard : onJoinGame}
+              onSelect={this._onSelectBoard}
             />
           ) : null}
-          {inline && selectedGame && currentUser && actions ? (
+          {inline && canRenderSelected && selectedGame ? (
             <TvGamePanel
-              key={selectedGame.id}
+              key={getGameKey(selectedGame)}
               game={selectedGame}
               currentUser={currentUser}
               usersByName={usersByName || {}}
