@@ -29,7 +29,7 @@ const MORE_INFO_PROPS: { [string]: string } = {
 
 type Props = {
   game: GameChannel,
-  actions: AppActions,
+  actions?: AppActions,
   roomsById: Index<Room>,
 };
 
@@ -65,7 +65,8 @@ export default class GameMoreMenu extends Component<Props, State> {
   render() {
     let { game, roomsById } = this.props;
     let { moreShowing, gameInfoShowing } = this.state;
-    let sgfUrl = game.summary ? getKgsSgfUrl(game.summary) : "#";
+    let sgfUrl =
+      game.sgfUrl || (game.summary ? getKgsSgfUrl(game.summary) : "#");
     let eidogoUrl = "http://eidogo.com/#url:" + sgfUrl;
     let gokibitzUrl = "https://gokibitz.com/fetch#" + sgfUrl;
     let moreInfoRows = game.tree && this._generateMoreInfo(game.tree.nodes[0]);

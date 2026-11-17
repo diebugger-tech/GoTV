@@ -161,8 +161,11 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   OGS nutzt `parseSgf(..., {skipI: false})` für Standard-SGF-Koordinaten.
 - `src/model/OgsTvSource.js` — anonyme OGS-REST-/SGF-Adapter zu GameChannel, 10-s-Polling
   nur für `ogs_game_id` aus einem Kalender-Event und nur bei geöffnetem Stream.
-- `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav; Zurückspulen bleibt
-  bei Live-Updates erhalten, "letzter Zug" kehrt zum automatischen Folgen zurück.
+- `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben
+  Beobachter-Komponenten wie GameScreen (GamePlayersInfo, GameInfo, UserList, GameChat,
+  ChatMessageBar, GameMoreMenu); Zurückspulen bleibt bei Live-Updates erhalten,
+  "letzter Zug" kehrt zum automatischen Folgen zurück. OGS-Chat ist anonym read-only;
+  `game.sgfUrl` gibt GameMoreMenu die quellenneutrale SGF-URL.
 - `public/tv/events.json` — Event-Daten (fetch beim Öffnen des TV-Tabs).
 - Nav-Punkt "tv": types.js (NavOption) + index.js (isValidNav) + meta/Nav.js + Main.js.
 - Stream-Öffnen aus dem Chat: dispatch `TV_OPEN_STREAM` {url} → nav "tv" → TvScreen zeigt

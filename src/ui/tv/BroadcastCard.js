@@ -220,6 +220,7 @@ export default class BroadcastCard extends Component<Props, State> {
               game={selectedGame}
               currentUser={currentUser}
               usersByName={usersByName || {}}
+              roomsById={roomsById}
               actions={actions}
               connectionKey={connectionKey}
             />

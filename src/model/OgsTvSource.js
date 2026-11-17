@@ -134,6 +134,7 @@ export function parseOgsGame(data: Object, sgf: string): GameChannel {
     moveNum,
     roomId: 0,
     rules,
+    sgfUrl: OGS_API_URL + gameId + "/sgf",
     tree,
     event: true,
     over: !!data.ended,

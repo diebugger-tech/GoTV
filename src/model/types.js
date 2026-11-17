@@ -332,6 +332,7 @@ export type GameChannel = {
   blackScore?: boolean,
   doneId?: number,
   summary?: GameSummary,
+  sgfUrl?: string,
   tree?: GameTree,
   users?: Array<string>,
   accessDenied?: string,

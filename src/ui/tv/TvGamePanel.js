@@ -3,14 +3,25 @@ import React, { PureComponent as Component } from "react";
 import BoardContainer from "../board/BoardContainer";
 import BoardNav from "../board/BoardNav";
 import GameChat from "../game/GameChat";
-import GamePlayersList from "../game/GamePlayersList";
-import { getGameChatSections, getGameLine } from "../../model/game";
-import type { GameChannel, User, Index, AppActions } from "../../model";
+import GameInfo from "../game/GameInfo";
+import GameMoreMenu from "../game/GameMoreMenu";
+import GamePlayersInfo from "../game/GamePlayersInfo";
+import ChatMessageBar from "../chat/ChatMessageBar";
+import UserList from "../user/UserList";
+import { A } from "../common";
+import {
+  formatGameScore,
+  getGameChatSections,
+  getGameLine,
+} from "../../model/game";
+import { sortUsers } from "../../model/user";
+import type { GameChannel, Room, User, Index, AppActions } from "../../model";
 
 type Props = {
   game: GameChannel,
   currentUser?: ?User,
   usersByName: Index<User>,
+  roomsById?: Index<Room>,
   actions?: AppActions,
   connectionKey?: string,
 };
@@ -18,12 +29,13 @@ type Props = {
 type State = {
   // null follows the newest move; a number keeps a locally rewound position.
   currentNode: ?number,
+  tab: "chat" | "info" | "users",
 };
 
 export default class TvGamePanel extends Component<Props, State> {
   _release: ?() => void;
   _chat: ?HTMLElement;
-  state = { currentNode: null };
+  state = { currentNode: null, tab: "chat" };
 
   componentDidMount() {
     this._subscribe();
@@ -77,8 +89,26 @@ export default class TvGamePanel extends Component<Props, State> {
     });
   };
 
+  _onSelectTab = (tab: "chat" | "info" | "users") => {
+    this.setState({ tab });
+  };
+
+  _onUserDetail = (user: User) => {
+    if (this.props.actions) {
+      this.props.actions.onUserDetail(user.name);
+    }
+  };
+
+  _onChat = (body: string) => {
+    let { actions, game } = this.props;
+    if (actions && game.tvSource !== "ogs") {
+      actions.onSendGameChat(body, game.id);
+    }
+  };
+
   render() {
-    let { game, currentUser, usersByName, actions } = this.props;
+    let { game, currentUser, usersByName, roomsById, actions } = this.props;
+    let { tab } = this.state;
     let tree = game.tree;
     let source = game.tvSource === "ogs" ? "OGS" : "KGS";
     let currentNode = tree ? tree.activeNode : null;
@@ -98,9 +128,21 @@ export default class TvGamePanel extends Component<Props, State> {
           }
         : game;
     let sections = getGameChatSections(game);
+    let users = game.users
+      ? game.users.map((name) => usersByName[name]).filter(Boolean)
+      : [];
+    sortUsers(users);
     return (
       <div className="TvGamePanel">
-        <GamePlayersList players={game.players} />
+        <div className="TvGamePanel-game-header">
+          <div className="TvGamePanel-game-score">
+            {game.over || game.score
+              ? (game.over ? "Game Over" : "") +
+                (game.score ? ": " + formatGameScore(game.score) : "")
+              : game.name || ""}
+          </div>
+          <GameMoreMenu game={liveGame} roomsById={roomsById || {}} />
+        </div>
         {game.accessDenied ? (
           <div className="TvGamePanel-notice">{game.accessDenied}</div>
         ) : tree && typeof currentNode === "number" && currentLine ? (
@@ -121,9 +163,48 @@ export default class TvGamePanel extends Component<Props, State> {
             Brett wird von {source} geladen …
           </div>
         )}
-        <div className="TvGamePanel-chat-title">{source}-Partiechat</div>
+        <div className="TvGamePanel-players">
+          <GamePlayersInfo game={liveGame} onUserDetail={this._onUserDetail} />
+        </div>
+        <div className="TvGamePanel-tabs">
+          <A
+            className={
+              "TvGamePanel-tab" +
+              (tab === "chat" ? " TvGamePanel-tab-active" : "")
+            }
+            onClick={this._onSelectTab.bind(this, "chat")}>
+            Chat
+          </A>
+          <A
+            className={
+              "TvGamePanel-tab" +
+              (tab === "info" ? " TvGamePanel-tab-active" : "")
+            }
+            onClick={this._onSelectTab.bind(this, "info")}>
+            Info
+          </A>
+          <A
+            className={
+              "TvGamePanel-tab" +
+              (tab === "users" ? " TvGamePanel-tab-active" : "")
+            }
+            onClick={this._onSelectTab.bind(this, "users")}>
+            {users.length} Observers
+          </A>
+        </div>
+        <div className="TvGamePanel-chat-title">
+          {tab === "info"
+            ? "Partieinfo"
+            : tab === "users"
+            ? "Beobachter"
+            : source + "-Partiechat"}
+        </div>
         <div className="TvGamePanel-chat" ref={this._setChatRef}>
-          {sections.length ? (
+          {tab === "info" ? (
+            <GameInfo game={liveGame} roomsById={roomsById || {}} />
+          ) : tab === "users" ? (
+            <UserList users={users} onSelectUser={this._onUserDetail} />
+          ) : sections.length ? (
             <GameChat
               currentUser={currentUser || { name: "" }}
               chatSections={sections}
@@ -137,6 +218,17 @@ export default class TvGamePanel extends Component<Props, State> {
             </div>
           )}
         </div>
+        {tab === "chat" ? (
+          <ChatMessageBar
+            conversation={{
+              id: 0,
+              messages: [],
+              status: "created",
+              chatsDisabled: !tree || game.tvSource === "ogs" || !actions,
+            }}
+            onSubmit={this._onChat}
+          />
+        ) : null}
       </div>
     );
   }

@@ -84,8 +84,12 @@ describe("BroadcastCard live status", () => {
     act(() => container.querySelector(".StreamEmbed-actions button").click());
     expect(container.querySelector("iframe")).not.toBe(null);
     expect(container.querySelector(".TvGamePanel")).not.toBe(null);
-    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(1);
-    expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(0);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-black")
+    ).toHaveLength(1);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-white")
+    ).toHaveLength(0);
     expect(container.textContent).toContain("Eine spannende Partie!");
     expect(actions.onObserveTvGame).toHaveBeenCalledWith(42);
     expect(onJoinGame).not.toHaveBeenCalled();
@@ -93,7 +97,9 @@ describe("BroadcastCard live status", () => {
     expect(container.querySelector(".BoardNav-move").textContent).toBe(
       "Move 0"
     );
-    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(0);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-black")
+    ).toHaveLength(0);
     let nextTree = { ...tree, activeNode: tree.currentLine[2] };
     nextTree.messages = {
       ...tree.messages,
@@ -106,16 +112,26 @@ describe("BroadcastCard live status", () => {
     expect(container.querySelector(".BoardNav-move").textContent).toBe(
       "Move 0"
     );
-    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(0);
-    expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(0);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-black")
+    ).toHaveLength(0);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-white")
+    ).toHaveLength(0);
     act(() => container.querySelector(".BoardNav-next").click());
-    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(1);
-    expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(0);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-black")
+    ).toHaveLength(1);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-white")
+    ).toHaveLength(0);
     act(() => container.querySelector(".BoardNav-last").click());
     expect(container.querySelector(".BoardNav-move").textContent).toBe(
       "Move 2"
     );
-    expect(container.querySelectorAll(".Board-stone-white")).toHaveLength(1);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-white")
+    ).toHaveLength(1);
     expect(actions.onObserveTvGame).toHaveBeenCalledTimes(1);
     act(() => container.querySelector(".BroadcastCard-close").click());
     expect(release).toHaveBeenCalledTimes(1);
@@ -141,6 +157,50 @@ describe("BroadcastCard live status", () => {
       ReactDOM.unmountComponentAtNode(container);
     });
     expect(releases[1]).toHaveBeenCalledTimes(1);
+  });
+
+  it("reuses observer player details, game info, users and chat input", () => {
+    let actions = {
+      onObserveTvGame: jest.fn(() => () => {}),
+      onSendGameChat: jest.fn(),
+    };
+    render(
+      [
+        {
+          ...game,
+          tree: parseSgf("(;SZ[9];B[aa])"),
+          rules: { size: 9, komi: 6.5 },
+          users: ["fan"],
+        },
+      ],
+      {
+        currentUser: { name: "viewer" },
+        usersByName: { fan: { name: "fan", rank: "2d" } },
+        actions,
+      }
+    );
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    expect(container.querySelector(".GameMoreMenu")).not.toBe(null);
+    expect(container.querySelector(".GamePlayersInfo")).not.toBe(null);
+    expect(container.querySelector(".GamePlayersInfo").textContent).toContain(
+      "0 captures"
+    );
+    act(() => container.querySelectorAll(".TvGamePanel-tab")[1].click());
+    expect(container.querySelector(".GameInfo").textContent).toContain("Komi");
+    act(() => container.querySelectorAll(".TvGamePanel-tab")[2].click());
+    expect(container.querySelector(".UserList").textContent).toContain("fan");
+    act(() => container.querySelectorAll(".TvGamePanel-tab")[0].click());
+    let input = container.querySelector(".ChatMessageBar-input");
+    expect(input.placeholder).toBe("Type a message...");
+    input.value = "Hallo";
+    act(() => {
+      container
+        .querySelector(".ChatMessageBar form")
+        .dispatchEvent(
+          new Event("submit", { bubbles: true, cancelable: true })
+        );
+    });
+    expect(actions.onSendGameChat).toHaveBeenCalledWith("Hallo", 42);
   });
 
   it("updates the move from list data and joins only when a board is clicked", () => {
@@ -194,7 +254,14 @@ describe("BroadcastCard live status", () => {
       .spyOn(ogsTvSource, "observeGame")
       .mockImplementation((gameId, listener) => {
         listener(
-          { ...game, id: gameId, tvSource: "ogs", tree, moveNum: 1 },
+          {
+            ...game,
+            id: gameId,
+            tvSource: "ogs",
+            sgfUrl: "https://online-go.com/api/v1/games/123/sgf",
+            tree,
+            moveNum: 1,
+          },
           null
         );
         return release;
@@ -212,7 +279,19 @@ describe("BroadcastCard live status", () => {
     act(() => container.querySelectorAll(".GameList-item")[1].click());
     expect(container.querySelector(".TvGamePanel")).not.toBe(null);
     expect(container.textContent).toContain("OGS-Partiechat");
-    expect(container.querySelectorAll(".Board-stone-black")).toHaveLength(1);
+    expect(
+      container.querySelectorAll(".TvGamePanel-board .Board-stone-black")
+    ).toHaveLength(1);
+    expect(container.querySelector(".GamePlayersInfo")).not.toBe(null);
+    expect(container.querySelector(".ChatMessageBar-input").placeholder).toBe(
+      "[Chats disabled]"
+    );
+    act(() => container.querySelector(".GameMoreMenu-trigger").click());
+    expect(
+      container
+        .querySelector(".GameMoreMenu-dropdown-item[download]")
+        .getAttribute("href")
+    ).toBe("https://online-go.com/api/v1/games/123/sgf");
     expect(onJoinGame).not.toHaveBeenCalled();
     act(() => container.querySelector(".BroadcastCard-close").click());
     expect(release).toHaveBeenCalledTimes(1);

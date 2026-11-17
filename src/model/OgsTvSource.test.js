@@ -41,6 +41,7 @@ describe("OgsTvSource game adapter", () => {
       type: "tournament",
       tvSource: "ogs",
       event: true,
+      sgfUrl: "https://online-go.com/api/v1/games/123/sgf",
       moveNum: 2,
       over: false,
       score: "B+RESIGN",

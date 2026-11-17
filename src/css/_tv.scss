@@ -230,6 +230,25 @@
   padding: 10px;
   min-width: 0;
 
+  &-game-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 35px;
+
+    .GameMoreMenu {
+      position: absolute;
+      top: 0;
+      right: 0;
+    }
+  }
+
+  &-game-score {
+    color: $muted;
+    font-size: 14px;
+  }
+
   &-board {
     position: relative;
     padding-top: 100%;
@@ -265,9 +284,32 @@
     }
   }
 
+  &-players {
+    margin-top: 8px;
+  }
+
+  &-tabs {
+    display: flex;
+    border-bottom: 2px solid $very-muted;
+    background: $off-white;
+  }
+
+  &-tab {
+    flex: 1;
+    padding: 6px 4px;
+    color: $semi-muted;
+    text-align: center;
+    border-bottom: 3px solid transparent;
+  }
+
+  &-tab-active {
+    color: $content-fg;
+    border-bottom-color: $link-color;
+  }
+
   &-chat-title {
     font-weight: bold;
-    margin-top: 12px;
+    margin-top: 0;
     padding: 8px;
     background: $off-white;
   }
