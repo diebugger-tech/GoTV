@@ -532,6 +532,7 @@ export class OgsTvSource implements TvSource {
       data = { ...data, gamedata: entry.liveGamedata };
     }
     let game = parseOgsGame(data, entry.sgf, undefined, entry.chat);
+    game.tvLive = !!entry.liveGamedata && !data.ended;
     this._gamesById[gameId] = game;
     entry.listeners.forEach((listener) => listener(game, null));
   }
@@ -592,8 +593,12 @@ export class OgsTvSource implements TvSource {
       );
     } else if (event === "offline") {
       // REST polling takes over at its full rate until OGS pushes again.
+      // Keep the newest pushed state as the base so the board does not
+      // jump back to the last (older) REST response.
+      if (live && entry.data && !entry.data.ended) {
+        entry.data = { ...entry.data, gamedata: live };
+      }
       entry.liveGamedata = null;
-      return;
     } else {
       return;
     }
@@ -642,6 +647,10 @@ export class OgsTvSource implements TvSource {
         let current = this._entries[gameId];
         if (current) {
           current.loading = false;
+          if (current.liveGamedata) {
+            // The real-time connection still delivers the game.
+            return;
+          }
           let message =
             err && err.message ? err.message : "OGS-Brett nicht erreichbar";
           current.listeners.forEach((listener) =>

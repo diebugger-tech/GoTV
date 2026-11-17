@@ -338,6 +338,8 @@ export type GameChannel = {
   accessDenied?: string,
   undoRequest?: GameRole,
   tvSource?: "kgs" | "ogs",
+  // OGS only: true while the real-time connection delivers this game.
+  tvLive?: boolean,
   // Flags
   global?: boolean,
   over?: boolean,

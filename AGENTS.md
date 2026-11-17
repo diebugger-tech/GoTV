@@ -189,6 +189,10 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   ersetzt die OGS-Zuordnung des Events; `observeEvent` nimmt die Spieler aus der
   verlinkten Partie und wechselt nach Partieende selbst zur nächsten Partie derselben
   zwei Spieler (nie zurück zu einer älteren).
+- Verbindungsanzeige am OGS-Brett (`BroadcastCard._renderOgsStatus`): "Live verbunden"
+  (Echtzeit, `game.tvLive`), "wird alle paar Sekunden abgefragt" (REST-Rückfall),
+  "Verbindung zu OGS unterbrochen – letzter Stand von HH:MM:SS" (Fehler bei stehendem
+  Brett), "Partie beendet – eine weitere Partie … erscheint automatisch".
 - `src/ui/tv/TvSourceBadge.js` — Badge "KGS"/"OGS" an jedem Brett der TV-Brettliste
   (`GameList` mit `showSource`) und im Kopf von `TvGamePanel`. Watch bleibt ohne Badge.
 - `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben

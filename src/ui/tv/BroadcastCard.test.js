@@ -285,6 +285,41 @@ describe("BroadcastCard live status", () => {
     expect(release).toHaveBeenCalledTimes(1);
   });
 
+  it("shows how fresh the OGS board is instead of looking live when it is not", () => {
+    let deliver;
+    jest
+      .spyOn(ogsTvSource, "observeEvent")
+      .mockImplementation((e, listener) => {
+        deliver = listener;
+        return jest.fn();
+      });
+    let tree = parseSgf("(;SZ[9];B[aa])");
+    tree.activeNode = tree.currentLine[1];
+    let ogsGame = { ...game, id: 7, tvSource: "ogs", tree, moveNum: 1 };
+    render([], {
+      broadcast: { event: { ...event, ogs_game_id: 7 }, games: [] },
+    });
+    act(() => container.querySelector(".StreamEmbed-actions button").click());
+    let status = () =>
+      container.querySelector(".BroadcastCard-ogs-status").textContent;
+    expect(container.querySelector(".BroadcastCard-ogs-status")).toBe(null);
+    act(() => deliver({ ...ogsGame, tvLive: true }, null));
+    expect(status()).toBe("Live verbunden – Züge erscheinen sofort");
+    act(() => deliver({ ...ogsGame, tvLive: false }, null));
+    expect(status()).toBe("Brett wird alle paar Sekunden abgefragt");
+    act(() => deliver(ogsGame, "OGS HTTP 502"));
+    expect(status()).toMatch(
+      /^Verbindung zu OGS unterbrochen – letzter Stand von \d\d:\d\d:\d\d \(OGS HTTP 502\)$/
+    );
+    expect(container.querySelector(".BroadcastCard-ogs-status-stale")).not.toBe(
+      null
+    );
+    act(() => deliver({ ...ogsGame, over: true }, null));
+    expect(status()).toBe(
+      "Partie beendet – eine weitere Partie derselben Spieler erscheint automatisch"
+    );
+  });
+
   it("assigns an OGS game link at the card and rejects other input", () => {
     let onAssignOgsLink = jest.fn();
     render([], { onAssignOgsLink });

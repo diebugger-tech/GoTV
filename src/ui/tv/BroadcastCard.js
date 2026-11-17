@@ -30,6 +30,8 @@ type State = {
   selectedGameKey: ?string,
   ogsGames: Array<GameChannel>,
   ogsError: ?string,
+  // When OGS last delivered the board without an error.
+  ogsUpdatedAt: ?number,
   linkFormOpen: boolean,
   linkInput: string,
   linkError: ?string,
@@ -91,6 +93,7 @@ export default class BroadcastCard extends Component<Props, State> {
     selectedGameKey: null,
     ogsGames: [],
     ogsError: null,
+    ogsUpdatedAt: null,
     linkFormOpen: false,
     linkInput: "",
     linkError: null,
@@ -118,7 +121,11 @@ export default class BroadcastCard extends Component<Props, State> {
     let event = this.props.broadcast.event;
     if (hasOgsBoard(event) && !this._releaseOgs) {
       this._releaseOgs = ogsTvSource.observeEvent(event, (game, error) => {
-        this.setState({ ogsGames: game ? [game] : [], ogsError: error });
+        this.setState((state) => ({
+          ogsGames: game ? [game] : [],
+          ogsError: error,
+          ogsUpdatedAt: game && !error ? Date.now() : state.ogsUpdatedAt,
+        }));
       });
     }
   };
@@ -204,6 +211,46 @@ export default class BroadcastCard extends Component<Props, State> {
       this.props.onJoinGame(selectedGameId);
     }
   };
+
+  // Says honestly how fresh the OGS board is, so a stalled board never looks
+  // like a running broadcast.
+  _renderOgsStatus() {
+    let { ogsGames, ogsError, ogsUpdatedAt } = this.state;
+    let game = ogsGames[0];
+    if (!game) {
+      return null;
+    }
+    let kind;
+    let text;
+    if (ogsError) {
+      kind = "stale";
+      text =
+        "Verbindung zu OGS unterbrochen" +
+        (ogsUpdatedAt
+          ? " – letzter Stand von " +
+            new Date(ogsUpdatedAt).toLocaleTimeString("de-DE")
+          : "") +
+        " (" +
+        ogsError +
+        ")";
+    } else if (game.over) {
+      kind = "waiting";
+      text =
+        "Partie beendet – eine weitere Partie derselben Spieler erscheint automatisch";
+    } else if (game.tvLive) {
+      kind = "live";
+      text = "Live verbunden – Züge erscheinen sofort";
+    } else {
+      kind = "polling";
+      text = "Brett wird alle paar Sekunden abgefragt";
+    }
+    return (
+      <div
+        className={"BroadcastCard-ogs-status BroadcastCard-ogs-status-" + kind}>
+        {text}
+      </div>
+    );
+  }
 
   _renderLinkForm() {
     let { linkFormOpen, linkInput, linkError } = this.state;
@@ -344,6 +391,7 @@ export default class BroadcastCard extends Component<Props, State> {
               {getBroadcastStatus(games)}
             </div>
           ) : null}
+          {this._renderOgsStatus()}
           {games.length ? (
             <GameList
               games={games}

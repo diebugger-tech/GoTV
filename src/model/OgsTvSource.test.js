@@ -538,6 +538,34 @@ describe("OgsTvSource anonymous polling", () => {
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });
 
+    it("tells whether the game is delivered live and keeps the newest state when the connection drops", async () => {
+      expect(lastGame().tvLive).toBe(false);
+      handler("gamedata", LIVE_DATA.gamedata);
+      handler("move", { game_id: 123, move_number: 4, move: [3, 3, 500] });
+      expect(lastGame().tvLive).toBe(true);
+      handler("offline", null);
+      expect(lastGame()).toMatchObject({ tvLive: false, moveNum: 4 });
+    });
+
+    it("does not report a failed safety-net request while OGS still pushes", async () => {
+      handler("gamedata", LIVE_DATA.gamedata);
+      fetchMock.mockImplementation(() =>
+        Promise.resolve({ ok: false, status: 502 })
+      );
+      jest.advanceTimersByTime(12000);
+      await flushPromises();
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(listener.mock.calls.every((call) => call[1] === null)).toBe(true);
+
+      handler("offline", null);
+      jest.advanceTimersByTime(1000);
+      await flushPromises();
+      expect(listener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 123 }),
+        "OGS HTTP 502"
+      );
+    });
+
     it("asks for the full game again after a missed move or an undo", async () => {
       handler("gamedata", LIVE_DATA.gamedata);
       handler("move", { game_id: 123, move_number: 6, move: [5, 5, 100] });

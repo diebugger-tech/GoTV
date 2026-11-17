@@ -566,3 +566,32 @@
     font-size: 13px;
   }
 }
+
+// Freshness of the OGS board on a broadcast card.
+.BroadcastCard-ogs-status {
+  margin: 2px 0 6px;
+  font-size: 13px;
+  color: $semi-muted;
+
+  &::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: $muted;
+  }
+
+  &-live::before {
+    background: $accent;
+  }
+
+  &-stale {
+    color: #c0392b;
+
+    &::before {
+      background: #c0392b;
+    }
+  }
+}
