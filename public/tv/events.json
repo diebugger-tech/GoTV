@@ -383,6 +383,20 @@
       "source": "egf-calendar",
       "date_end": "2026-12-13",
       "notes": "EGF Grand Prix Circuit · Level C · Velika Gorica, Croatia"
+    },
+    {
+      "id": "speed-go-championship-2026-11-22-surma-ovsiienko",
+      "name": "Speed Go Championship: Mateusz Surma 4p – Vsevolod Ovsiienko 6d",
+      "date_start": "2026-11-22",
+      "start": "2026-11-22T18:00:00+01:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "region": "intl",
+      "notes": "Round of 16, Bo5, eskalierendes Zeitlimit (jede Partie 1 Min/1 Sek schneller). Bestätigt per speedgochampionship.com/bracket (Spielplan) und .../ (Format/Quellen). Bretter laufen auf online-go.com (OGS), nicht KGS - BroadcastCard zeigt deshalb vorerst nur den Stream, kein Brett (keine OGS-Anbindung). Ggf. Duplikat, sobald der tägliche twitch-egf-Import diesen Termin selbst findet - dann zusammenführen/entfernen."
     }
   ],
   "channels": [
