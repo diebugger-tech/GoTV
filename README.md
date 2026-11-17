@@ -11,9 +11,32 @@ of a JavaScript client for [KGS Go Server](http://www.gokgs.com/).
 - The upstream project's **official stable version** is available at https://shin.gokgs.com.
 - The upstream project's **development version** (less stable) is available at https://shinkgs-master.now.sh.
 
+## What GoTV adds
+
+- **Live:** tournaments that are running right now - with the official
+  YouTube/Twitch player where a stream exists, and with the game boards
+  next to it. Tournaments without a stream are listed by their boards.
+- **Boards from KGS and OGS:** KGS broadcast games (after login) and games
+  on [online-go.com](https://online-go.com) (no account needed). OGS moves,
+  clocks and chat arrive in real time; each board is labelled KGS or OGS.
+- **Follows a match by itself:** name the OGS players of an event, or paste
+  one OGS game link at the card ("OGS-Partielink zuordnen") - after each
+  game the next game of the same players appears automatically.
+- **Kinomodus:** stream and board fill the window side by side, with an
+  adjustable split and a collapsible chat.
+- **Brett-Verzögerung:** delay the boards by 0-120 s so moves never get
+  ahead of the video commentary.
+- **Watch without a KGS login:** "Go TV ohne Anmeldung ansehen" on the
+  login screen, or open `/tv` directly.
+- **Kalender** and **Nachspielen:** a tournament calendar that refreshes
+  daily, and SGF replay move by move.
+
+Streams are embedded only through the official players, and only after a
+click (two-click solution).
+
 ## Screenshots
 
-**Live** — broadcasts with an official video embed, listing the matching KGS games to jump to:
+**Live** — running tournaments with the official video embed and their KGS/OGS boards:
 
 <img src="./docs/screenshots/tv-live.png" width="700">
 
@@ -130,6 +153,14 @@ Each entry:
 | `channel` | no | `{"platform": "youtube"\|"twitch", "id": "..."}`. Used only while the event is live (today) and no `video_id` is set, to embed whatever that channel is currently streaming. YouTube needs the channel *id* (`UC...`), not the `@handle`; Twitch takes the channel login. |
 | `sgf_url` | no | Link to a recorded SGF. Shows a "SGF nachspielen" shortcut and keeps the event from disappearing after 14 days (see below). |
 | `notes` | no | Short free-text shown under the name. |
+| `start` | no | Exact start time (ISO 8601 with offset). The event then counts as live from 15 minutes before until `duration_minutes` after (default 240). |
+| `kgs_room` / `kgs_players` | no | KGS room name and/or KGS player names whose broadcast games belong to this event. |
+| `ogs_game_id` | no | Number of one game on online-go.com (`https://online-go.com/game/<id>`) to show as the board. |
+| `ogs_players` | no | OGS user names of the players. The board is the game between exactly these players that started during the event; a series moves on to the next game by itself. |
+
+An event appears under **Live** while it runs and there is something to
+watch: a YouTube/Twitch stream, a linked board (`kgs_*`/`ogs_*`), or both.
+An event with neither stays in the calendar only.
 
 Example entry for a tournament broadcast on a known channel, embedding
 whatever that channel streams while the event is live:
