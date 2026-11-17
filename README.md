@@ -110,7 +110,7 @@ in place by the uninstaller.
 ## Events eintragen
 
 The GoTV calendar (`public/tv/events.json`) is loaded from
-[`diebugger-tech/shinkgs`](https://github.com/diebugger-tech/shinkgs) on
+[`diebugger-tech/GoTV`](https://github.com/diebugger-tech/GoTV) on
 GitHub first, falling back to the bundled local copy when offline or
 unreachable (`fetchTvEvents()` in `src/model/tv.js`, cached for an hour).
 To add or update an event, edit `public/tv/events.json` in this repo and

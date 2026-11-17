@@ -340,7 +340,7 @@ export function validateTvChannel(value: Object): ?TvChannel {
 // sends Access-Control-Allow-Origin: *, so this is fetchable directly from
 // the browser - no proxy needed.
 export const REMOTE_EVENTS_URL =
-  "https://raw.githubusercontent.com/diebugger-tech/shinkgs/master/public/tv/events.json";
+  "https://raw.githubusercontent.com/diebugger-tech/GoTV/master/public/tv/events.json";
 // Absolute, so it also resolves when the page itself is at /tv/.
 const LOCAL_EVENTS_URL = "/tv/events.json";
 const EVENTS_CACHE_MS = 60 * 60 * 1000; // 1 hour

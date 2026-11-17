@@ -294,7 +294,7 @@ DGOB_BASE_URL = "https://www.dgob.de/wp-json/tribe/events/v1/events"
 DGOB_CATEGORIES = ("go-bundesliga", "online-turnier", "deutsche-meisterschaft")
 DGOB_RETENTION_DAYS = 90
 DGOB_USER_AGENT = (
-    "shinkgs-go-tv-dgob-importer/1.0 (+https://github.com/diebugger-tech/shinkgs)"
+    "shinkgs-go-tv-dgob-importer/1.0 (+https://github.com/diebugger-tech/GoTV)"
 )
 DGOB_STREAM_MAP_PATH = (
     Path(__file__).resolve().parent.parent / "data" / "dgob_streams.json"
@@ -612,7 +612,7 @@ EGF_CALENDAR_BASE_URL = "https://www.eurogofed.org/grandprix/bt{year}/"
 EGF_CALENDAR_RETENTION_DAYS = 90
 EGF_CALENDAR_USER_AGENT = (
     "shinkgs-go-tv-egf-calendar-importer/1.0"
-    " (+https://github.com/diebugger-tech/shinkgs)"
+    " (+https://github.com/diebugger-tech/GoTV)"
 )
 # A German tournament already has a more authoritative, structured source
 # here (DGOB_CATEGORIES, or hand-curated when that filter misses one - see

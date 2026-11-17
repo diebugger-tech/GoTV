@@ -31,7 +31,7 @@ URL_RE = re.compile(r"https?://[^\s\"'`<>\\]+")
 # PR description for a human to glance at, not a hard gate, so a missed
 # dead redirect is worse than an occasional false positive.
 ERROR_PATH_RE = re.compile(r"404|410|not-?found|error", re.I)
-USER_AGENT = "shinkgs-go-tv-link-checker/1.0 (+https://github.com/diebugger-tech/shinkgs)"
+USER_AGENT = "shinkgs-go-tv-link-checker/1.0 (+https://github.com/diebugger-tech/GoTV)"
 
 
 def find_urls_in_events(events_file):
