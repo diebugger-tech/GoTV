@@ -1,5 +1,9 @@
 # <img src="./desktop/icons/gotv.svg" width="32"> GoTV
 
+<p align="center">
+  <img src="./desktop/icons/png/gotv-256.png" width="128" alt="GoTV app icon: a Go board as a TV screen">
+</p>
+
 GoTV adds live Go broadcasts, a tournament calendar, and SGF replay on top
 of a JavaScript client for [KGS Go Server](http://www.gokgs.com/).
 
@@ -99,6 +103,43 @@ Prerequisites:
 - `inkscape` or ImageMagick (`convert`/`magick`), only if you need to
   regenerate `desktop/icons/png/` from `desktop/icons/gotv.svg` - the
   rendered PNGs are committed, so a plain install doesn't need either
+
+### Quick start: GoTV on your Linux desktop
+
+<img src="./desktop/icons/png/gotv-64.png" width="48" align="right" alt="GoTV icon">
+
+```
+git clone https://github.com/diebugger-tech/GoTV.git
+cd GoTV
+yarn install
+sh desktop/install.sh
+```
+
+That installs the app for your user only (no sudo). Open the app grid
+(Super key), type "GoTV" and start it. Right-click the icon in the dock
+and choose "Pin to Dash" / "Zu Favoriten hinzufügen" to keep it there.
+
+The icon comes from `desktop/icons/gotv.svg`; the rendered sizes are in
+`desktop/icons/png/`.
+
+### Icon on the desktop itself
+
+To start GoTV from an icon on the desktop surface, copy the installed
+launcher there and allow it to run:
+
+```
+cp ~/.local/share/applications/gotv.desktop "$(xdg-user-dir DESKTOP)/"
+chmod +x "$(xdg-user-dir DESKTOP)/gotv.desktop"
+gio set "$(xdg-user-dir DESKTOP)/gotv.desktop" metadata::trusted true
+```
+
+The last line does the same as right-click → "Allow Launching" /
+"Starten erlauben". Desktop icons need a desktop that shows them: Ubuntu
+does out of the box (Desktop Icons NG); plain GNOME does not - use the
+app grid or the dock there. Run `sh desktop/install.sh` first, the
+launcher file does not exist before.
+
+### Details
 
 Install (no sudo, user-scoped only):
 
