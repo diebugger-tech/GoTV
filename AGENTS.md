@@ -168,6 +168,12 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   laufende Partien kommen deshalb aus `gamedata` des Detail-Abrufs
   (`src/model/OgsGameData.js`: Züge → SGF-Text, Ränge, Uhren); das SGF mit dem
   Partiechat wird erst nach Partieende einmal geladen.
+- `src/model/OgsGameFinder.js` — `ogs_players` (OGS-Benutzernamen) im Kalender-Event als
+  Alternative zur festen `ogs_game_id`: `OgsTvSource.observeEvent` sucht die Partie
+  zwischen GENAU diesen Spielern, die im Live-Fenster des Events begonnen hat (laufende
+  Partie zuerst, sonst die zuletzt beendete), und folgt einer Serie (Bo5) selbst zur
+  nächsten Partie. Während eine Partie läuft, wird nur sie gepollt; davor/danach die
+  Partieliste des ersten Spielers alle 15 s. Eine `ogs_game_id` hat Vorrang.
 - `src/ui/tv/TvSourceBadge.js` — Badge "KGS"/"OGS" an jedem Brett der TV-Brettliste
   (`GameList` mit `showSource`) und im Kopf von `TvGamePanel`. Watch bleibt ohne Badge.
 - `src/ui/tv/TvGamePanel.js` — KGS-/OGS-Brett mit lokaler BoardNav und denselben
@@ -184,7 +190,8 @@ Kleiner offener Rest (kosmetisch, keine Funktion): die Fehlermeldung in
   TV-Tab mit simulierten Daten rendert (6 Fake-Partien inkl. einer Event-Vorlesung, die
   NICHT unter Live erscheinen darf; Übertragung mit Brett, Übertragung nur mit Stream,
   Turnierseite ohne Video; Chat-Messages mit Stream-Links, Replay). Zusätzlich lädt das
-  Event `dev-today-ogs` die historische OGS-Partie 2 real und anonym für den API-/UI-Test.
+  Event `dev-today-ogs` die historische OGS-Partie 2 real und anonym für den API-/UI-Test;
+  `dev-today-ogs-players` folgt per `ogs_players` der heutigen Partie eines OGS-Bots.
   `TvScreen` nimmt dafür optional rohe `events` (wie `CalendarView`). Er wird im Production-Build von terser
   weggefaltet — nach jedem Build prüfen:
   `grep -rl "GO-TV-DEV-HARNESS" build/` darf nichts finden. Deshalb auch
@@ -203,8 +210,9 @@ Policy, von dir als "Stufe 1" bezeichnet:
   (b) Kalender-Events (Phase 3), die gerade live sind.
   Alle anderen aktiven KGS-Partien gehören nur in "Watch".
 - **TvSource-Interface:** Implementiert sind `KgsTvSource` und `OgsTvSource`.
-  OGS liefert ausschließlich Bretter zu expliziten `ogs_game_id`-Feldern im Kalender,
-  niemals eine Rangliste beliebiger laufender OGS-Partien. `IgsTvSource` (Pandanet/IGS)
+  OGS liefert ausschließlich Bretter zu expliziten `ogs_game_id`- oder
+  `ogs_players`-Feldern im Kalender, niemals eine Rangliste beliebiger laufender
+  OGS-Partien. `IgsTvSource` (Pandanet/IGS)
   ist absichtlich BLOCKIERT — `/igs-bridge` in `goTV_local.py` antwortet 501, bis die
   IGS-Nutzungsbedingungen geprüft sind (Kontakt laut Pandanet-FAQ:
   `developer@pandanet-igs.com`).

@@ -190,6 +190,16 @@ if (
       notes: "Echter anonymer OGS-API-Test mit der bereits beendeten Partie 2.",
     },
     {
+      id: "dev-today-ogs-players",
+      name: "Dev-Test: OGS-Brett per Spielername (folgt der aktuellen Partie)",
+      date_start: devDaysFromNow(0),
+      platform: "twitch",
+      stream_url: "https://www.twitch.tv/example_channel",
+      ogs_players: ["amybot-beginner"],
+      notes:
+        "Echter anonymer OGS-API-Test: heutige Partie eines OGS-Bots, wechselt nach Partieende zur nächsten.",
+    },
+    {
       id: "dev-today-no-video",
       name: "Dev-Test: Turnierseite ohne Video (darf NICHT unter Live)",
       date_start: devDaysFromNow(0),

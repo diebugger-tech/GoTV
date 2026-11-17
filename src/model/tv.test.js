@@ -21,6 +21,7 @@ import {
   fetchTvChannels,
   _resetTvEventsCache,
   REMOTE_EVENTS_URL,
+  hasOgsBoard,
 } from "./tv";
 
 function makeUser(name, rankVal) {
@@ -831,6 +832,23 @@ describe("validateTvEvent kgs fields", () => {
     expect(validateTvEvent({ ...base, ogs_game_id: "123" })).toBe(null);
     expect(validateTvEvent({ ...base, ogs_game_id: 0 })).toBe(null);
     expect(validateTvEvent({ ...base, ogs_game_id: 1.5 })).toBe(null);
+  });
+
+  it("keeps trimmed OGS player names and rejects malformed lists", () => {
+    let event = validateTvEvent({ ...base, ogs_players: [" Surma ", "Ovsi"] });
+    expect(event.ogs_players).toEqual(["Surma", "Ovsi"]);
+    expect(validateTvEvent({ ...base, ogs_players: "Surma" })).toBe(null);
+    expect(validateTvEvent({ ...base, ogs_players: ["Surma", ""] })).toBe(null);
+  });
+
+  it("knows whether a broadcast is linked to an OGS board", () => {
+    expect(hasOgsBoard(validateTvEvent(base))).toBe(false);
+    expect(hasOgsBoard(validateTvEvent({ ...base, ogs_game_id: 5 }))).toBe(
+      true
+    );
+    expect(
+      hasOgsBoard(validateTvEvent({ ...base, ogs_players: ["Surma"] }))
+    ).toBe(true);
   });
 });
 

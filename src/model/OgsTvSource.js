@@ -1,9 +1,12 @@
 // @flow
 import { parseSgf, getSgfRootProp } from "./sgf";
 import { buildOgsSgf, getOgsTimeRules, parseOgsClocks } from "./OgsGameData";
+import { pickOgsGameId } from "./OgsGameFinder";
 import {
   getLiveEvents,
   getLiveGames as getActiveLiveGames,
+  getLiveWindow,
+  hasOgsBoard,
   hasVideoStream,
 } from "./tv";
 import { parseRankVal } from "./user";
@@ -21,6 +24,10 @@ import type {
 } from "./types";
 
 const OGS_API_URL = "https://online-go.com/api/v1/games/";
+const OGS_PLAYERS_URL = "https://online-go.com/api/v1/players/";
+// How often a broadcast that names its players looks for their (next) game.
+const DEFAULT_FIND_INTERVAL_MS = 15000;
+const FIND_PAGE_SIZE = 10;
 // One anonymous request per poll while a game runs (see fetchGame).
 const DEFAULT_POLL_INTERVAL_MS = 5000;
 
@@ -172,14 +179,21 @@ export function parseOgsGame(
 export class OgsTvSource implements TvSource {
   _fetch: Fetch;
   _pollIntervalMs: number;
+  _findIntervalMs: number;
   _entries: { [number]: OgsEntry } = {};
   _gamesById: { [number]: GameChannel } = {};
+  _playerIds: { [name: string]: Promise<number> } = {};
 
-  constructor(fetchFn?: Fetch, pollIntervalMs?: number) {
+  constructor(
+    fetchFn?: Fetch,
+    pollIntervalMs?: number,
+    findIntervalMs?: number
+  ) {
     this._fetch =
       fetchFn ||
       ((url, options) => fetch(url, { ...options, credentials: "omit" }));
     this._pollIntervalMs = pollIntervalMs || DEFAULT_POLL_INTERVAL_MS;
+    this._findIntervalMs = findIntervalMs || DEFAULT_FIND_INTERVAL_MS;
   }
 
   getLiveGames(activeGames: Array<GameChannel>): Array<GameChannel> {
@@ -190,7 +204,7 @@ export class OgsTvSource implements TvSource {
 
   getLiveEvents(events: Array<TvEvent>, now: Date): Array<TvEvent> {
     return getLiveEvents(events, now).filter(
-      (event) => hasVideoStream(event) && !!event.ogs_game_id
+      (event) => hasVideoStream(event) && hasOgsBoard(event)
     );
   }
 
@@ -234,22 +248,140 @@ export class OgsTvSource implements TvSource {
   // from the detail response.
   fetchGame(gameId: number): Promise<GameChannel> {
     let url = OGS_API_URL + gameId;
-    return this._fetch(url, { credentials: "omit" })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("OGS HTTP " + response.status);
+    return this._fetchJson(url).then((data) => {
+      if (!data.ended) {
+        return parseOgsGame(data);
+      }
+      return this._fetch(url + "/sgf", { credentials: "omit" })
+        .then((response) => (response.ok ? response.text() : null))
+        .catch(() => null)
+        .then((sgf) => parseOgsGame(data, sgf));
+    });
+  }
+
+  _fetchJson(url: string): Promise<Object> {
+    return this._fetch(url, { credentials: "omit" }).then((response) => {
+      if (!response.ok) {
+        throw new Error("OGS HTTP " + response.status);
+      }
+      return response.json();
+    });
+  }
+
+  // OGS user name -> player id, looked up once per name.
+  _resolvePlayerId(name: string): Promise<number> {
+    let key = name.trim().toLowerCase();
+    if (!this._playerIds[key]) {
+      this._playerIds[key] = this._fetchJson(
+        OGS_PLAYERS_URL + "?username=" + encodeURIComponent(name.trim())
+      )
+        .then((data) => {
+          let results = Array.isArray(data.results) ? data.results : [];
+          let player = results.find(
+            (candidate) =>
+              typeof candidate.username === "string" &&
+              candidate.username.toLowerCase() === key
+          );
+          if (!player) {
+            throw new Error("OGS-Spieler nicht gefunden: " + name);
+          }
+          return player.id;
+        })
+        .catch((err) => {
+          delete this._playerIds[key];
+          throw err;
+        });
+    }
+    return this._playerIds[key];
+  }
+
+  // The game between the listed players that started at or after
+  // windowStartMs (see pickOgsGameId), or null if there is none yet.
+  findGameId(players: Array<string>, windowStartMs: number): Promise<?number> {
+    return this._resolvePlayerId(players[0])
+      .then((playerId) =>
+        this._fetchJson(
+          OGS_PLAYERS_URL +
+            playerId +
+            "/games/?ordering=-id&page_size=" +
+            FIND_PAGE_SIZE
+        )
+      )
+      .then((data) =>
+        pickOgsGameId(
+          Array.isArray(data.results) ? data.results : [],
+          players,
+          windowStartMs
+        )
+      );
+  }
+
+  // Observes the OGS board of a calendar broadcast: a fixed ogs_game_id, or
+  // the current game of its ogs_players. With players the board follows a
+  // series by itself: while a game runs only that game is polled; once it is
+  // over (or before the first one) the player's game list is checked for the
+  // next game.
+  observeEvent(event: TvEvent, listener: OgsGameListener): () => void {
+    if (event.ogs_game_id) {
+      return this.observeGame(event.ogs_game_id, listener);
+    }
+    let players = event.ogs_players;
+    if (!players || !players.length) {
+      return () => {};
+    }
+    let names = players;
+    let windowStartMs = getLiveWindow(event).start.getTime();
+    let released = false;
+    let searching = false;
+    let currentId: ?number = null;
+    let currentGame: ?GameChannel = null;
+    let releaseGame: ?() => void = null;
+    let search = () => {
+      if (released || searching || (currentGame && !currentGame.over)) {
+        return;
+      }
+      searching = true;
+      this.findGameId(names, windowStartMs).then(
+        (gameId) => {
+          searching = false;
+          if (released || !gameId || gameId === currentId) {
+            return;
+          }
+          if (releaseGame) {
+            releaseGame();
+          }
+          currentId = gameId;
+          currentGame = null;
+          releaseGame = this.observeGame(gameId, (game, error) => {
+            if (currentId === gameId) {
+              currentGame = game || currentGame;
+              listener(game, error);
+            }
+          });
+        },
+        (err) => {
+          searching = false;
+          if (!released && !currentId) {
+            listener(
+              null,
+              err && err.message ? err.message : "OGS nicht erreichbar"
+            );
+          }
         }
-        return response.json();
-      })
-      .then((data) => {
-        if (!data.ended) {
-          return parseOgsGame(data);
-        }
-        return this._fetch(url + "/sgf", { credentials: "omit" })
-          .then((response) => (response.ok ? response.text() : null))
-          .catch(() => null)
-          .then((sgf) => parseOgsGame(data, sgf));
-      });
+      );
+    };
+    let timer = setInterval(search, this._findIntervalMs);
+    search();
+    return () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      clearInterval(timer);
+      if (releaseGame) {
+        releaseGame();
+      }
+    };
   }
 
   observeGame(gameId: number, listener: OgsGameListener): () => void {

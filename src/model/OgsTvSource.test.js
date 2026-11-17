@@ -241,6 +241,147 @@ describe("OgsTvSource anonymous polling", () => {
     );
   });
 
+  describe("broadcasts that name their OGS players", () => {
+    let event = {
+      id: "series",
+      name: "Series",
+      date_start: "2026-11-22",
+      start: "2026-11-22T18:00:00Z",
+      platform: "twitch",
+      stream_url: "https://www.twitch.tv/egf",
+      ogs_players: ["Surma", "Ovsiienko"],
+    };
+    let listed;
+    let ended;
+
+    function listEntry(id, endedAt) {
+      return {
+        id,
+        started: "2026-11-22T18:05:00Z",
+        ended: endedAt || null,
+        players: {
+          black: { username: "Surma" },
+          white: { username: "Ovsiienko" },
+        },
+      };
+    }
+
+    function seriesFetch(url) {
+      if (url.includes("/players/?username=")) {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              results: [
+                { id: 70, username: "Surma2" },
+                { id: 7, username: "surma" },
+              ],
+            }),
+        });
+      }
+      if (url.includes("/players/7/games/")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ results: listed }),
+        });
+      }
+      let id = Number(url.match(/games\/(\d+)/)[1]);
+      return Promise.resolve(
+        responseFor(url, {
+          ...LIVE_DATA,
+          id,
+          ended: ended[id] ? "2026-11-22T18:30:00Z" : null,
+        })
+      );
+    }
+
+    beforeEach(() => {
+      listed = [];
+      ended = {};
+    });
+
+    it("waits for the first game, then follows the series to the next game", async () => {
+      let fetchMock = jest.fn(seriesFetch);
+      let source = new OgsTvSource(fetchMock, 1000, 3000);
+      let listener = jest.fn();
+      let release = source.observeEvent(event, listener);
+      await flushPromises();
+      expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+        "https://online-go.com/api/v1/players/?username=Surma",
+        "https://online-go.com/api/v1/players/7/games/?ordering=-id&page_size=10",
+      ]);
+      expect(listener).not.toHaveBeenCalled();
+
+      listed = [listEntry(501)];
+      jest.advanceTimersByTime(3000);
+      await flushPromises();
+      expect(listener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 501, over: false }),
+        null
+      );
+
+      // While game 501 runs, only the game itself is polled.
+      let listCalls = () =>
+        fetchMock.mock.calls.filter((call) => call[0].includes("/players/7/"))
+          .length;
+      let before = listCalls();
+      jest.advanceTimersByTime(3000);
+      await flushPromises();
+      expect(listCalls()).toBe(before);
+
+      ended[501] = true;
+      listed = [listEntry(501, "2026-11-22T18:30:00Z")];
+      jest.advanceTimersByTime(1000);
+      await flushPromises();
+      expect(listener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 501, over: true }),
+        null
+      );
+
+      listed = [listEntry(502), listEntry(501, "2026-11-22T18:30:00Z")];
+      jest.advanceTimersByTime(3000);
+      await flushPromises();
+      expect(listener).toHaveBeenLastCalledWith(
+        expect.objectContaining({ id: 502, over: false }),
+        null
+      );
+
+      release();
+      let total = fetchMock.mock.calls.length;
+      jest.advanceTimersByTime(10000);
+      await flushPromises();
+      expect(fetchMock).toHaveBeenCalledTimes(total);
+    });
+
+    it("reports an unknown OGS player instead of showing another game", async () => {
+      let fetchMock = jest.fn(() =>
+        Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ results: [{ id: 1, username: "x" }] }),
+        })
+      );
+      let source = new OgsTvSource(fetchMock, 1000, 3000);
+      let listener = jest.fn();
+      source.observeEvent(event, listener);
+      await flushPromises();
+      expect(listener).toHaveBeenCalledWith(
+        null,
+        "OGS-Spieler nicht gefunden: Surma"
+      );
+    });
+
+    it("uses a fixed ogs_game_id directly when the calendar has one", async () => {
+      let fetchMock = jest.fn(seriesFetch);
+      let source = new OgsTvSource(fetchMock, 1000, 3000);
+      let listener = jest.fn();
+      source.observeEvent({ ...event, ogs_game_id: 123 }, listener);
+      await flushPromises();
+      expect(fetchMock.mock.calls.map((call) => call[0])).toEqual([
+        "https://online-go.com/api/v1/games/123",
+      ]);
+    });
+  });
+
   it("reports request errors without inventing a board", async () => {
     let fetchMock = jest.fn(() => Promise.resolve({ ok: false, status: 404 }));
     let source = new OgsTvSource(fetchMock, 1000);

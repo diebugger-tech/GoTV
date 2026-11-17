@@ -56,6 +56,10 @@ export type TvEvent = {
   kgs_players?: Array<string>,
   // An explicitly assigned OGS board; never a query for arbitrary live games.
   ogs_game_id?: number,
+  // Or the OGS user names of the players: the board is then the game between
+  // exactly these players that started during the broadcast (see
+  // OgsGameFinder) - for series whose game ids exist only once a game starts.
+  ogs_players?: Array<string>,
   // With "start": how long the broadcast runs (default LIVE_DEFAULT_MINUTES).
   duration_minutes?: number,
 };
@@ -169,6 +173,13 @@ export function validateTvEvent(value: Object): ?TvEvent {
     return null;
   }
   if (
+    value.ogs_players !== undefined &&
+    value.ogs_players !== null &&
+    !isStringList(value.ogs_players)
+  ) {
+    return null;
+  }
+  if (
     value.duration_minutes !== undefined &&
     value.duration_minutes !== null &&
     (typeof value.duration_minutes !== "number" ||
@@ -217,10 +228,21 @@ export function validateTvEvent(value: Object): ?TvEvent {
   if (value.ogs_game_id) {
     event.ogs_game_id = value.ogs_game_id;
   }
+  if (value.ogs_players && value.ogs_players.length) {
+    event.ogs_players = value.ogs_players.map((name) => name.trim());
+  }
   if (value.duration_minutes) {
     event.duration_minutes = value.duration_minutes;
   }
   return event;
+}
+
+// Whether the calendar links this broadcast to an OGS board (id or players).
+export function hasOgsBoard(event: TvEvent): boolean {
+  return !!(
+    event.ogs_game_id ||
+    (event.ogs_players && event.ogs_players.length)
+  );
 }
 
 // Go TV only shows broadcasts with a video channel (Andreas, 13.11.2026):

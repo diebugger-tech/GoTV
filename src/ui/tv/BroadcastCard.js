@@ -4,6 +4,7 @@ import GameList from "../game/GameList";
 import CalendarEventCard from "./CalendarEventCard";
 import TvGamePanel from "./TvGamePanel";
 import { ogsTvSource } from "../../model/OgsTvSource";
+import { hasOgsBoard } from "../../model/tv";
 import type { TvBroadcast } from "../../model/tv";
 import type { GameChannel, Room, User, AppActions, Index } from "../../model";
 
@@ -88,9 +89,9 @@ export default class BroadcastCard extends Component<Props, State> {
 
   _onStreamLoad = () => {
     this.setState({ streamLoaded: true });
-    let gameId = this.props.broadcast.event.ogs_game_id;
-    if (gameId && !this._releaseOgs) {
-      this._releaseOgs = ogsTvSource.observeGame(gameId, (game, error) => {
+    let event = this.props.broadcast.event;
+    if (hasOgsBoard(event) && !this._releaseOgs) {
+      this._releaseOgs = ogsTvSource.observeEvent(event, (game, error) => {
         this.setState({ ogsGames: game ? [game] : [], ogsError: error });
       });
     }
@@ -150,7 +151,7 @@ export default class BroadcastCard extends Component<Props, State> {
       ogsError,
     } = this.state;
     let games = [...kgsGames, ...ogsGames];
-    let hasOgs = !!event.ogs_game_id;
+    let hasOgs = hasOgsBoard(event);
     let selectedGame =
       games.find((game) => getGameKey(game) === selectedGameKey) ||
       games.find((game) => !game.over) ||
@@ -167,9 +168,11 @@ export default class BroadcastCard extends Component<Props, State> {
           ? "Brett auf " + source
           : games.length + " Bretter auf " + source;
     } else if (hasOgs) {
-      boardTitle = streamLoaded
+      boardTitle = !streamLoaded
+        ? "OGS-Brett beim Öffnen des Streams verfügbar"
+        : event.ogs_game_id
         ? "OGS-Brett wird geladen …"
-        : "OGS-Brett beim Öffnen des Streams verfügbar";
+        : "OGS-Brett erscheint, sobald die Partie läuft";
     } else {
       boardTitle = "Kein KGS-Brett – nur Stream";
     }

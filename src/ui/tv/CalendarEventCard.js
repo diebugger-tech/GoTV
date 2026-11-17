@@ -2,7 +2,7 @@
 import React, { PureComponent as Component } from "react";
 import StreamEmbed from "./StreamEmbed";
 import { formatLocaleDate, formatLocaleTime } from "../../util/date";
-import { getLiveWindow, hasVideoStream } from "../../model/tv";
+import { getLiveWindow, hasOgsBoard, hasVideoStream } from "../../model/tv";
 import type { TvEvent } from "../../model/tv";
 
 type Props = {
@@ -46,10 +46,10 @@ function getBoardStatus(
     event.kgs_room ||
     (event.kgs_players && event.kgs_players.length)
   );
-  if (hasKgs && event.ogs_game_id) {
+  if (hasKgs && hasOgsBoard(event)) {
     return "KGS-/OGS-Zuordnungen hinterlegt · derzeit kein Brett geladen";
   }
-  if (event.ogs_game_id) {
+  if (hasOgsBoard(event)) {
     return (
       "OGS-Zuordnung hinterlegt" +
       (ogsBoardCount === 0 ? " · Brett lädt beim Öffnen des Streams" : "")
