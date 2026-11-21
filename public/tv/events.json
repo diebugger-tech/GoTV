@@ -371,6 +371,19 @@
         "id": "europeangofederation"
       },
       "source": "twitch-egf"
+    },
+    {
+      "id": "twitch-egf-d685ad0c-9b8e-4727-af5c-1f6ca8e01488",
+      "name": "Speed Go Championship powered by Factorio | Mateusz Surma 4p vs Vsevolod Ovsiienko 6d | Live with Andrii Kravets 4p",
+      "date_start": "2026-11-22",
+      "start": "2026-11-22T18:00:00+01:00",
+      "platform": "twitch",
+      "stream_url": "https://www.twitch.tv/europeangofederation",
+      "channel": {
+        "platform": "twitch",
+        "id": "europeangofederation"
+      },
+      "source": "twitch-egf"
     }
   ],
   "channels": [
